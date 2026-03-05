@@ -6,11 +6,11 @@ Only proceed when every required item is checked.
 
 ## 1) Repository Settings (GitHub UI, required)
 
-Path: `Settings -> Security -> Code security and analysis`
+Path: `Settings -> Advanced Security -> Code security and analysis`
 
-- [ ] Enable `Dependency graph`
-- [ ] Enable `Dependabot alerts`
-- [ ] Enable `Dependabot security updates`
+- [x] Enable `Dependency graph`
+- [x] Enable `Dependabot alerts`
+- [x] Enable `Dependabot security updates`
 - [ ] Enable `Code scanning`
 - [ ] Enable `Secret scanning` (if available on your plan)
 - [ ] Enable `Push protection` (if available on your plan)
