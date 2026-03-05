@@ -1,0 +1,51 @@
+# Backend
+/backend/.env
+/backend/app.db
+/backend/*.db
+/backend/*.sqlite
+/backend/*.sqlite3
+/backend/__pycache__/
+/backend/**/__pycache__/
+/backend/.pytest_cache/
+/backend/tests/.pytest_cache/
+/backend/.coverage
+/backend/htmlcov/
+/backend/.venv/
+
+# Frontend
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+/frontend/.env
+/frontend/.env.local
+/frontend/__pycache__/
+/frontend/tests/artifacts/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Python
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+/app.db
