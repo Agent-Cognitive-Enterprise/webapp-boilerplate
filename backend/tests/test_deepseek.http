@@ -1,0 +1,33 @@
+###
+
+# curl https://api.deepseek.com/chat/completions
+#  -H "Content-Type: application/json"
+#  -H "Authorization: Bearer ${DEEPSEEK_API_KEY}"
+#  -d '{
+#        "model": "deepseek-chat",
+#        "messages": [
+#          {"role": "system", "content": "You are a helpful assistant."},
+#          {"role": "user", "content": "Hello!"}
+#        ],
+#        "stream": false
+#      }'
+# "model": "deepseek-chat",
+POST https://api.deepseek.com/chat/completions
+Authorization: Bearer {{DEEPSEEK_API_KEY}}
+Content-Type: application/json
+
+{
+
+  "model": "deepseek-reasoner",
+  "messages": [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {
+      "role": "user",
+      "content": "If a train travels at 60 mph for 2 hours, how far does it go?"
+    }
+  ],
+  "stream": false
+}
+
+###
+
