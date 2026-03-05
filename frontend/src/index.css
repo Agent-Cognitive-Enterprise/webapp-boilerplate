@@ -1,0 +1,147 @@
+/* /frontend/src/index.css */
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap");
+@import "tailwindcss";
+
+:root {
+    --ace-bg-top: #f4f8ff;
+    --ace-bg-mid: #dbeeff;
+    --ace-bg-bottom: #ecf7ef;
+    --ace-panel: rgba(255, 255, 255, 0.78);
+    --ace-panel-strong: rgba(255, 255, 255, 0.92);
+    --ace-border: rgba(15, 23, 42, 0.12);
+    --ace-text-main: #1e293b;
+    --ace-text-muted: #475569;
+    --ace-brand: #0353a4;
+    --ace-brand-strong: #023e7d;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    min-height: 100dvh;
+}
+
+body {
+    margin: 0;
+    font-family: "Outfit", sans-serif;
+    color: var(--ace-text-main);
+    background: linear-gradient(165deg, var(--ace-bg-top) 0%, var(--ace-bg-mid) 52%, var(--ace-bg-bottom) 100%);
+}
+
+input,
+textarea,
+select,
+button {
+    font: inherit;
+}
+
+.ace-page-shell {
+    min-height: 100dvh;
+    padding: 5.5rem 1rem 2rem;
+}
+
+@media (min-width: 768px) {
+    .ace-page-shell {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+}
+
+.ace-card {
+    width: 100%;
+    border-radius: 1rem;
+    border: 1px solid var(--ace-border);
+    background: var(--ace-panel);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15);
+}
+
+.ace-card-strong {
+    background: var(--ace-panel-strong);
+}
+
+.ace-card-pad {
+    padding: 1rem;
+}
+
+@media (min-width: 640px) {
+    .ace-card-pad {
+        padding: 1.5rem;
+    }
+}
+
+.ace-input {
+    margin-top: 0.35rem;
+    width: 100%;
+    border-radius: 0.65rem;
+    border: 1px solid rgba(100, 116, 139, 0.45);
+    background: rgba(255, 255, 255, 0.96);
+    padding: 0.62rem 0.8rem;
+    color: #0f172a;
+}
+
+.ace-input:focus {
+    outline: 2px solid rgba(3, 83, 164, 0.2);
+    border-color: rgba(3, 83, 164, 0.52);
+}
+
+.ace-field-label {
+    font-size: 0.93rem;
+    font-weight: 600;
+    color: var(--ace-text-muted);
+}
+
+.ace-primary-btn {
+    width: 100%;
+    border: none;
+    border-radius: 0.7rem;
+    background: linear-gradient(120deg, var(--ace-brand) 0%, var(--ace-brand-strong) 100%);
+    color: white;
+    padding: 0.68rem 1rem;
+    font-weight: 600;
+    transition: transform 180ms ease, filter 180ms ease;
+}
+
+.ace-primary-btn:hover {
+    filter: brightness(1.05);
+}
+
+.ace-primary-btn:active {
+    transform: translateY(1px);
+}
+
+.ace-primary-btn:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+    filter: none;
+    transform: none;
+}
+
+.ace-nav-link,
+.ace-nav-button {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    padding: 0.45rem 0.8rem;
+    color: #f8fafc;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 180ms ease, color 180ms ease;
+}
+
+.ace-nav-link:hover,
+.ace-nav-button:hover {
+    color: #dbeafe;
+    background: rgba(148, 163, 184, 0.24);
+}
+
+.ace-nav-button {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
