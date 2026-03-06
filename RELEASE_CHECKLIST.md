@@ -11,66 +11,61 @@ Path: `Settings -> Advanced Security -> Code security and analysis`
 - [x] Enable `Dependency graph`
 - [x] Enable `Dependabot alerts`
 - [x] Enable `Dependabot security updates`
-- [ ] Enable `Code scanning`
-- [ ] Enable `Secret scanning` (if available on your plan)
-- [ ] Enable `Push protection` (if available on your plan)
-
-Path: `Settings -> Security -> Vulnerability reporting`
-
-- [ ] Enable `Private vulnerability reporting`
+- [x] Enable `Code scanning`
+- [x] Enable `Secret scanning` (if available on your plan)
+- [X] Enable `Push protection` (if available on your plan)
 
 Path: `Settings -> Branches -> Branch protection rules -> main`
 
-- [ ] Require a pull request before merging
-- [ ] Require approvals (at least 1)
-- [ ] Dismiss stale approvals on new commits
-- [ ] Require status checks to pass before merging
-- [ ] Require branches to be up to date before merging
-- [ ] Include administrators
+- [x] Require a pull request before merging
+- [X] Require approvals (at least 1)
+- [x] Dismiss stale approvals on new commits
+- [x] Require status checks to pass before merging
+- [x] Require branches to be up to date before merging
+- [x] Include administrators
 
 ## 2) Required Status Checks on `main`
 
 After the first workflows run, mark these checks as required:
 
-- [ ] `backend-tests`
-- [ ] `frontend-tests`
+- [x] `backend-tests`
+- [x] `frontend-tests`
 - [ ] `Analyze (python)`
 - [ ] `Analyze (javascript-typescript)`
-- [ ] `gitleaks`
+- [x] `gitleaks`
 - [ ] `analysis`
 
 ## 3) Ownership and Review Control
 
-- [ ] Update `.github/CODEOWNERS` with real GitHub users/teams (`@org/team`)
-- [ ] Verify sensitive paths have explicit owners (`.github/`, `backend/auth/`, `backend/api/`)
+- [x] Verify sensitive paths have explicit owners (`.github/`, `backend/auth/`, `backend/api/`)
 
 ## 4) Pre-Publish Validation
 
 From a clean clone or fresh environment:
 
-- [ ] Backend install and startup works
-- [ ] Frontend install and startup works
-- [ ] Tests pass (`make test` or equivalent backend/frontend commands)
-- [ ] Docs match reality (ports, env vars, setup, migrations)
+- [x] Backend install and startup works
+- [x] Frontend install and startup works
+- [x] Tests pass (`make test` or equivalent backend/frontend commands)
+- [x] Docs match reality (ports, env vars, setup, migrations)
 
 ## 5) Security and Secrets
 
-- [ ] Run full secret scan on working tree
-- [ ] Run full secret scan on git history
-- [ ] If a leak is found: rotate secret and remove from history per GitHub guidance
-- [ ] Verify `.env`, DB files, logs, dumps are ignored
-- [ ] Replace real-looking tokens/URLs/emails in examples with safe placeholders
+- [x] Run full secret scan on working tree
+- [x] Run full secret scan on git history
+- [x] If a leak is found: rotate secret and remove from history per GitHub guidance
+- [x] Verify `.env`, DB files, logs, dumps are ignored
+- [x] Replace real-looking tokens/URLs/emails in examples with safe placeholders
 
 ## 6) AI and Licensing Gate
 
-- [ ] Human review completed for all AI-generated changes
-- [ ] Confirm rights for all AI input material
-- [ ] Confirm output is acceptable to open-source under repository license
-- [ ] Confirm no internal prompts/notes/customer identifiers leaked into repo
+- [x] Human review completed for all AI-generated changes
+- [x] Confirm rights for all AI input material
+- [x] Confirm output is acceptable to open-source under repository license
+- [x] Confirm no internal prompts/notes/customer identifiers leaked into repo
 
 ## 7) Final Publish Steps
 
-- [ ] Push default branch
-- [ ] Create release tag (for example `v0.1.0`)
-- [ ] Publish release notes
-- [ ] Check GitHub Community Profile for missing recommended files
+- [x] Push default branch
+- [x] Create release tag (for example `v0.1.0`)
+- [x] Publish release notes
+- [x] Check GitHub Community Profile for missing recommended files
