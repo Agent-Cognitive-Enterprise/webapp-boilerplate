@@ -30,8 +30,8 @@ After the first workflows run, mark these checks as required:
 
 - [x] `backend-tests`
 - [x] `frontend-tests`
-- [ ] `Analyze (python)`
-- [ ] `Analyze (javascript-typescript)`
+- [x] `Analyze (python)`
+- [x] `Analyze (javascript-typescript)`
 - [x] `gitleaks`
 - [ ] `analysis`
 
