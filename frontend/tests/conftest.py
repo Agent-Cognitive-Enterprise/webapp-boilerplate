@@ -2,7 +2,6 @@
 
 """Pytest configuration and fixtures for frontend Playwright tests."""
 import asyncio
-import logging
 import os
 import re
 import signal
