@@ -87,6 +87,11 @@ Set at least these required values in `backend/.env`:
 - `AUTH_SECRET_KEY`
 - `INITIAL_SETUP_TOKEN`
 
+Optional AI provider keys:
+
+- `OPENAI_API_KEY` for OpenAI-backed translation/suggestion features
+- `DEEPSEEK_API_KEY` for DeepSeek-backed translation/suggestion features
+
 Generate a strong secret, for example:
 
 ```bash
@@ -136,6 +141,7 @@ Core variables:
 - `AUTH_FRONTEND_BASE_URL` (default: `http://localhost:5173`)
 - `AUTH_BACKEND_BASE_URL` (default: `http://localhost:8000`)
 - `COOKIE_SAME_SITE` / `COOKIE_SECURE`
+- `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` (optional third-party AI provider keys)
 
 See [backend/.env.example](backend/.env.example) for the full template.
 

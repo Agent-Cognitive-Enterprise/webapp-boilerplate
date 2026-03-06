@@ -18,9 +18,15 @@ vi.mock('./modal/SelectLocale.tsx', () => ({
 }));
 
 describe('UiLocaleSelector Component', () => {
+  const reloadSpy = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...window.location, reload: reloadSpy },
+    });
   });
 
   afterEach(() => {
@@ -53,10 +59,15 @@ describe('UiLocaleSelector Component', () => {
 
     render(<UiLocaleSelector />);
 
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalled();
+    });
+
     fireEvent.click(screen.getByText('English'));
     fireEvent.click(screen.getByRole('button', { name: 'Select French' }));
 
     expect(localStorage.getItem('uiLocale')).toBe('fr');
+    expect(reloadSpy).toHaveBeenCalledTimes(1);
   });
 
   it('handles list API failure gracefully', async () => {

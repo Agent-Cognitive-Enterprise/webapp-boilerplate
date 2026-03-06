@@ -45,6 +45,7 @@ describe('Login Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   it('renders login form elements', () => {

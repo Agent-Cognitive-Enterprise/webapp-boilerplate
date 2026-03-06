@@ -35,7 +35,6 @@ const Login = () => {
         } catch (err: any) {
             console.error('Login error:', err);
             const errorMessage = err.message || 'Login failed. Please check your credentials.';
-            console.log('Setting error message:', errorMessage);
             setError(errorMessage);
         } finally {
             setIsLoading(false);

@@ -104,24 +104,24 @@ Outputs optimized build to `dist/` directory.
 npm test
 ```
 
-Runs Vitest component tests for React components. Tests are located in `src/components/*.test.tsx`.
-
-Current test coverage:
-- ForgotPassword component (7 tests)
-- ResetPassword component (8 tests)
-- Login component with error handling (8 tests)
+Runs frontend unit and component tests for routes, API helpers, components, and context providers.
 
 #### End-to-End Tests (Python/Playwright)
 
-E2E tests are written in Python using Playwright and located in `frontend/tests/`.
+The supported browser-level test for this boilerplate is:
+- `frontend/tests/test_setup_initialization_e2e.py`
 
-To run E2E tests:
+It exercises the first-run setup flow, locale switching, admin settings locale updates, and responsive login/setup screens.
+
+To run it:
 ```bash
-# From project root
-cd backend && python -m pytest ../frontend/tests/test_components.py -v
+cd backend
+.venv/bin/pip install playwright
+.venv/bin/playwright install --with-deps chromium
+PYTHONPATH=. .venv/bin/pytest ../frontend/tests/test_setup_initialization_e2e.py -q
 ```
 
-**Note:** E2E tests require both backend and frontend servers to be running.
+The test suite starts the backend and frontend automatically.
 
 #### Visual Review Artifacts (Screenshots + Checklist)
 

@@ -41,8 +41,6 @@ function ModalContent(
         const value = tempSelected || selected;
         onSelect(value);
         onClose();
-        // Reload the page to apply a new locale
-        window.location.reload();
     };
 
     return (

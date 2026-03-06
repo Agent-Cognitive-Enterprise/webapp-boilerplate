@@ -1,30 +1,21 @@
 # /frontend/tests/conftest.py
 
-"""
-Pytest configuration and fixtures for E2E tests.
-
-This module provides fixtures for:
-- Multi-user browser contexts with storage state
-- Playwright browser instances
-- API clients for backend testing
-- Database utilities for verification
-"""
+"""Pytest configuration and fixtures for frontend Playwright tests."""
 import asyncio
+import logging
 import os
+import re
 import signal
 import subprocess
 import sys
-import re
 from queue import Queue
-from uuid import UUID
 
 import httpx
-import logging
-from playwright.sync_api import sync_playwright
+import pytest
 import threading
 import time
-import pytest
 import uvicorn
+from playwright.sync_api import sync_playwright
 
 # NOTE: These environment variables must be set before importing any application code
 os.environ.setdefault("DB_TYPE", "sqlite")
@@ -35,43 +26,6 @@ os.environ.setdefault("INITIAL_SETUP_TOKEN", "test-initial-setup-token")
 
 from main import app
 from frontend.frontend_anchor import FrontendAnchor
-from crud.user import get_by_email
-from utils.db import get_session
-
-try:
-    from crud.message import get_session_history as get_session_history_messages
-except ModuleNotFoundError:  # pragma: no cover - optional legacy module
-    get_session_history_messages = None
-
-try:
-    from crud.opus import get_by_user_id as get_opuses_by_user_id
-except ModuleNotFoundError:  # pragma: no cover - optional legacy module
-    get_opuses_by_user_id = None
-
-try:
-    from crud.opus_contributor import is_contributor as is_contributor_crud
-except ModuleNotFoundError:  # pragma: no cover - optional legacy module
-    is_contributor_crud = None
-
-try:
-    from crud.chapter_draft import get_by_opus_id_and_title
-except ModuleNotFoundError:  # pragma: no cover - optional legacy module
-    get_by_opus_id_and_title = None
-
-
-class FileFilter(logging.Filter):
-    def filter(self, record: logging.LogRecord) -> bool:
-        # Show only logs originating from this file
-        return (
-            os.path.basename(record.pathname) == "test_frontend_e2e.py"
-            or os.path.basename(record.pathname) == "test_frontend_e2e_selenium.py"
-        )
-
-
-# Apply the filter globally
-logger = logging.getLogger()
-for handler in logger.handlers:
-    handler.addFilter(FileFilter())
 
 
 FAST_API_HOST = "localhost"
@@ -304,89 +258,3 @@ def run_async_safely(coro):
     if ok:
         return payload
     raise payload
-
-
-def get_db_user_records(user_email: str):
-    # noinspection PyTypeChecker
-    async def db_task():
-        user = None
-        async for session in get_session():
-            user = await get_by_email(
-                session=session,
-                email=user_email,
-            )
-
-        return user
-
-    return run_async_safely(db_task())
-
-
-def get_db_opus_records(user_id: UUID):
-    if get_opuses_by_user_id is None:
-        pytest.skip("crud.opus is not available in this backend build")
-
-    async def db_task():
-        opuses: list = []
-        async for session in get_session():
-            opuses = await get_opuses_by_user_id(
-                session=session,
-                user_id=user_id,
-            )
-
-        return opuses
-
-    return run_async_safely(db_task())
-
-
-def check_db_is_opus_contributor(user_id: UUID, opus_id: UUID) -> bool:
-    if is_contributor_crud is None:
-        pytest.skip("crud.opus_contributor is not available in this backend build")
-
-    async def db_task():
-        is_contributor = False
-        async for session in get_session():
-
-            is_contributor = await is_contributor_crud(
-                session=session,
-                opus_id=opus_id,
-                user_id=user_id,
-            )
-
-        return is_contributor
-
-    return run_async_safely(db_task())
-
-
-def get_db_path_messages(path: str):
-    if get_session_history_messages is None:
-        pytest.skip("crud.message is not available in this backend build")
-
-    async def db_task():
-        messages = []
-        async for session in get_session():
-            messages = await get_session_history_messages(
-                session=session,
-                path=path,
-            )
-
-        return messages
-
-    return run_async_safely(db_task())
-
-
-def get_db_opus_chapter_draft(opus_id: UUID, title: str):
-    if get_by_opus_id_and_title is None:
-        pytest.skip("crud.chapter_draft is not available in this backend build")
-
-    async def db_task():
-        db_chapter_draft = None
-        async for session in get_session():
-            db_chapter_draft = await get_by_opus_id_and_title(
-                session=session,
-                opus_id=opus_id,
-                title=title,
-            )
-
-        return db_chapter_draft
-
-    return run_async_safely(db_task())

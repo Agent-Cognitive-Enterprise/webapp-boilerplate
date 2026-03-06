@@ -41,6 +41,7 @@ function renderUserManagement(auth: AuthState) {
 describe('UserManagement Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   it('redirects non-admin users away from /users', () => {

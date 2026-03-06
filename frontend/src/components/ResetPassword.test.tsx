@@ -1,7 +1,7 @@
 // frontend/src/components/ResetPassword.test.tsx
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import ResetPassword from './ResetPassword';
 import api from '../api/api';
@@ -213,8 +213,11 @@ describe('ResetPassword Component', () => {
       expect(screen.getByTestId('ui-label-reset_password.button.resetting')).toBeInTheDocument();
     });
 
-    // Resolve the promise
-    resolvePromise!({ data: {} });
+    // Resolve the promise and wait for React to process the async state update.
+    await act(async () => {
+      resolvePromise!({ data: {} });
+      await promise;
+    });
   });
 
   it('requires both password fields to be filled', () => {
