@@ -27,6 +27,7 @@ vi.mock("../api/auth.ts", () => ({
 
 function ContextHarness() {
     const auth = React.useContext(AuthContext);
+    const [loginError, setLoginError] = React.useState<string | null>(null);
     if (!auth) {
         throw new Error("AuthContext not available");
     }
@@ -35,7 +36,16 @@ function ContextHarness() {
         <div>
             <div data-testid="token">{auth.token ?? "none"}</div>
             <div data-testid="user-email">{auth.user?.email ?? "none"}</div>
-            <button type="button" onClick={() => void auth.login("user@example.com", "SecurePass123!")}>
+            <div data-testid="login-error">{loginError ?? "none"}</div>
+            <button
+                type="button"
+                onClick={() => {
+                    setLoginError(null);
+                    void auth.login("user@example.com", "SecurePass123!").catch((error: Error) => {
+                        setLoginError(error.message);
+                    });
+                }}
+            >
                 Login
             </button>
             <button type="button" onClick={() => void auth.logout()}>
@@ -105,6 +115,25 @@ describe("AuthProvider", () => {
         expect(screen.getByTestId("user-email")).toHaveTextContent("none");
         expect(getAccessToken()).toBeNull();
         expect(mockNavigate).toHaveBeenCalledWith("/login");
+    });
+
+    it("surfaces a dedicated message for unverified-email login failures", async () => {
+        vi.mocked(loginUser).mockRejectedValue({
+            response: {
+                status: 403,
+                data: { detail: "Email verification required" },
+            },
+        });
+
+        renderProvider();
+        fireEvent.click(screen.getByRole("button", { name: "Login" }));
+
+        await waitFor(() =>
+            expect(screen.getByTestId("login-error")).toHaveTextContent(
+                "Email verification required. Please check your inbox."
+            )
+        );
+        expect(mockNavigate).not.toHaveBeenCalledWith("/dashboard");
     });
 
     it("responds to shared session invalidation by clearing auth state and redirecting", async () => {

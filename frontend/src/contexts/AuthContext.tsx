@@ -80,10 +80,14 @@ const AuthProvider = ({children}: AuthProviderProps) => {
                 throw new Error('Invalid response from server');
             }
         } catch (err: any) {
+            const status = err.response?.status;
+            const detail = err.response?.data?.detail;
             // Re-throw with user-friendly message
-            if (err.response?.status === 401 || err.response?.status === 400) {
+            if (status === 401 || status === 400) {
                 throw new Error('Invalid email or password');
-            } else if (err.response?.status === 403) {
+            } else if (status === 403 && detail === 'Email verification required') {
+                throw new Error('Email verification required. Please check your inbox.');
+            } else if (status === 403) {
                 throw new Error('Account is not active. Please contact support.');
             } else if (err.message) {
                 throw err;

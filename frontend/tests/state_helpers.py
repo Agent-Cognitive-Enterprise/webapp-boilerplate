@@ -22,6 +22,18 @@ class SeedUser:
     is_admin: bool = False
 
 
+@dataclass(frozen=True)
+class SeedEmailSettings:
+    smtp_host: str
+    smtp_port: int
+    smtp_from_email: str
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_use_tls: bool = True
+    auth_frontend_base_url: str | None = None
+    auth_backend_base_url: str | None = None
+
+
 def reset_uninitialized_state() -> None:
     async def _task():
         async for session in get_session():
@@ -38,6 +50,7 @@ def seed_initialized_state(
     site_name: str = "E2E Locale Site",
     supported_locales: list[str] | None = None,
     users: list[SeedUser] | None = None,
+    email_settings: SeedEmailSettings | None = None,
 ) -> None:
     async def _task():
         async for session in get_session():
@@ -49,6 +62,20 @@ def seed_initialized_state(
                     supported_locales=supported_locales or ["en"],
                     is_initialized=True,
                     initialized_at=datetime.now(timezone.utc),
+                    smtp_host=email_settings.smtp_host if email_settings else None,
+                    smtp_port=email_settings.smtp_port if email_settings else None,
+                    smtp_username=email_settings.smtp_username if email_settings else None,
+                    smtp_password=email_settings.smtp_password if email_settings else None,
+                    smtp_from_email=(
+                        email_settings.smtp_from_email if email_settings else None
+                    ),
+                    smtp_use_tls=email_settings.smtp_use_tls if email_settings else True,
+                    auth_frontend_base_url=(
+                        email_settings.auth_frontend_base_url if email_settings else None
+                    ),
+                    auth_backend_base_url=(
+                        email_settings.auth_backend_base_url if email_settings else None
+                    ),
                 )
             )
             for user in users or []:
