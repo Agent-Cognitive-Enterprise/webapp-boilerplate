@@ -105,7 +105,7 @@ jobs:
         run: npm ci
 
       - name: Install Playwright Chromium
-        run: playwright install --with-deps chromium
+        run: python -m playwright install --with-deps chromium
 
       - name: Run frontend browser tests
         run: PYTHONPATH=..:. pytest ../frontend/tests -q

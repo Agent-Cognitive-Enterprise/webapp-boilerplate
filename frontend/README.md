@@ -124,7 +124,6 @@ Together they exercise:
 To run it:
 ```bash
 cd backend
-.venv/bin/pip install playwright
 .venv/bin/playwright install --with-deps chromium
 PYTHONPATH=..:. .venv/bin/pytest ../frontend/tests -q
 ```
