@@ -3,7 +3,12 @@ import re
 from playwright.sync_api import expect
 
 from frontend.tests.conftest import FRONTEND_BASE_URL
-from frontend.tests.state_helpers import SeedUser, reset_uninitialized_state, seed_initialized_state
+from frontend.tests.state_helpers import (
+    SeedUser,
+    reset_uninitialized_state,
+    seed_initialized_state,
+    seed_ui_locales,
+)
 
 
 def _login(page, email: str, password: str) -> None:
@@ -95,6 +100,44 @@ def test_admin_supported_locale_change_is_visible_on_login_page(visual_page):
     page.get_by_text("English").click()
     expect(page.get_by_role("button", name=re.compile("Fran", re.IGNORECASE))).to_be_visible()
     snap("login_locale_selector_after_admin_update")
+
+
+def test_authenticated_user_can_switch_profile_locale_to_rtl(visual_page):
+    reset_uninitialized_state()
+    seed_initialized_state(
+        site_name="E2E Authenticated Locale Switch Site",
+        supported_locales=["en", "ar"],
+        users=[
+            SeedUser(
+                full_name="Locale User",
+                email="locale-user@example.com",
+                password="LocalePass123!",
+            )
+        ],
+    )
+    seed_ui_locales(["en", "ar"])
+
+    page, snap = visual_page
+
+    _login(page, "locale-user@example.com", "LocalePass123!")
+    expect(page).to_have_url(re.compile(".*/dashboard$"))
+
+    page.goto(f"{FRONTEND_BASE_URL}/profile")
+    expect(page).to_have_url(re.compile(".*/profile$"))
+    expect(page.get_by_text("locale-user@example.com")).to_be_visible()
+    assert page.evaluate("document.documentElement.dir") == "ltr"
+    snap("profile_before_authenticated_locale_switch")
+
+    page.get_by_text("English").click()
+    page.get_by_role("button", name=re.compile("العربية")).click()
+    page.get_by_role("button", name=re.compile("save|حفظ", re.IGNORECASE)).click()
+
+    page.wait_for_timeout(800)
+    expect(page).to_have_url(re.compile(".*/profile$"))
+    assert page.evaluate("document.documentElement.lang").startswith("ar")
+    assert page.evaluate("document.documentElement.dir") == "rtl"
+    expect(page.get_by_text("العربية")).to_be_visible()
+    snap("profile_after_authenticated_locale_switch_rtl")
 
 
 def test_admin_can_create_deactivate_and_delete_user(visual_page):

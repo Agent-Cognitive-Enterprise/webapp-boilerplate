@@ -5,6 +5,7 @@ from sqlalchemy import delete
 from sqlmodel import select
 
 from auth.auth_handler import create_access_token
+from api.auth import _RATE_BUCKETS
 from frontend.tests.conftest import run_async_safely
 from models.system_settings import SystemSettings
 from models.ui_label import UiLabel
@@ -36,6 +37,8 @@ class SeedEmailSettings:
 
 
 def reset_uninitialized_state() -> None:
+    _RATE_BUCKETS.clear()
+
     async def _task():
         async for session in get_session():
             await session.execute(delete(UiLabel))
