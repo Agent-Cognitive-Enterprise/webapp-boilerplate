@@ -1,15 +1,15 @@
 # HANDOFF
 
 ## Current objective
-Continue improving cross-stack browser coverage, with the next focus on the remaining auth/email journeys after stabilizing the first-run setup flow in CI.
+Keep CI and repo automation current while continuing the browser-coverage push for the remaining auth/email journeys.
 
 ## Completed in this session
-- Fixed the setup-complete routing race in `frontend/src/App.tsx` by adding a one-shot redirect to `/login` immediately after first-run setup succeeds.
-- Added a regression test in `frontend/src/App.test.tsx` that submits the real setup form through `App` and asserts the post-setup login redirect.
-- Re-ran the full frontend verification path: `npm test`, `npm run lint`, `npm run build`, and `PYTHONPATH=..:. .venv/bin/pytest ../frontend/tests -q`.
+- Updated all GitHub Actions workflow `actions/checkout` references from v4 to v5 to address the GitHub runner Node.js 20 deprecation warning ahead of the June 2, 2026 Node 24 default switch.
+- Verified all workflow YAML files still parse cleanly with Ruby’s `YAML.load_file`.
+- The earlier setup redirect fix and frontend/browser verification remain green.
 
 ## Current status
-The first-run setup browser flow is passing again. The app now preserves the intended `/login` redirect after setup submission while still showing the “already configured” screen for later manual visits to `/setup`.
+The repo no longer references `actions/checkout@v4`; all workflow checkout steps now use `actions/checkout@v5`, which is the current migration path for GitHub’s Node 24 action runtime transition. Frontend/browser verification from the earlier setup fix remains green.
 
 ## Next step
 Add browser e2e coverage for the remaining auth/email journeys, starting with forgot-password/reset-password and email-verification flows.
@@ -17,13 +17,15 @@ Add browser e2e coverage for the remaining auth/email journeys, starting with fo
 ## Important files
 - AGENTS.md
 - HANDOFF.md
+- .github/workflows/ci.yml
+- .github/workflows/codeql.yml
+- .github/workflows/scorecard.yml
+- .github/workflows/secret-scan.yml
 - frontend/src/App.tsx
 - frontend/src/App.test.tsx
-- frontend/tests/test_auth_and_admin_e2e.py
-- frontend/tests/test_setup_initialization_e2e.py
 
 ## Notes for next session
-The setup failure was caused by a frontend state/navigation race: after setup completed, `isInitialized` flipped before the router transition landed, so the browser stayed on `/setup`. The fix is in `frontend/src/App.tsx`, not in the backend setup API. Keep using the backend-driven browser harness from `backend` with `PYTHONPATH=..:. .venv/bin/pytest ../frontend/tests -q`.
+GitHub is warning about JavaScript actions still on the Node 20 runtime. `actions/checkout` has been migrated to `v5` across repo workflows. Other actions were not changed in this pass because the warning only flagged checkout; if GitHub starts warning on additional actions, audit those individually rather than mass-bumping blindly.
 
 ## Last updated
-2026-03-18 11:32 UTC
+2026-03-18 11:39 UTC
