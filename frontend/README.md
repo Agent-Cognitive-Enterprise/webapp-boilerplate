@@ -108,20 +108,28 @@ Runs frontend unit and component tests for routes, API helpers, components, and 
 
 #### End-to-End Tests (Python/Playwright)
 
-The supported browser-level test for this boilerplate is:
+The supported browser-level tests for this boilerplate are:
 - `frontend/tests/test_setup_initialization_e2e.py`
+- `frontend/tests/test_auth_and_admin_e2e.py`
 
-It exercises the first-run setup flow, locale switching, admin settings locale updates, and responsive login/setup screens.
+Together they exercise:
+- first-run setup
+- locale switching and RTL rendering
+- admin settings locale updates
+- responsive login/setup screens
+- protected-route redirect behavior
+- login, profile, and logout flow
+- admin locale changes reflected on the public login screen
 
 To run it:
 ```bash
 cd backend
 .venv/bin/pip install playwright
 .venv/bin/playwright install --with-deps chromium
-PYTHONPATH=. .venv/bin/pytest ../frontend/tests/test_setup_initialization_e2e.py -q
+PYTHONPATH=..:. .venv/bin/pytest ../frontend/tests -q
 ```
 
-The test suite starts the backend and frontend automatically.
+The test suite starts a dedicated migrated backend database plus frontend dev server automatically.
 
 #### Visual Review Artifacts (Screenshots + Checklist)
 

@@ -5,9 +5,11 @@ import asyncio
 import os
 import re
 import signal
+import socket
 import subprocess
 import sys
 from queue import Queue
+from pathlib import Path
 
 import httpx
 import pytest
@@ -18,17 +20,35 @@ from playwright.sync_api import sync_playwright
 
 # NOTE: These environment variables must be set before importing any application code
 os.environ.setdefault("DB_TYPE", "sqlite")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_DIR = REPO_ROOT / "backend"
+SQLITE_E2E_DB_PATH = str(BACKEND_DIR / "frontend_e2e.db")
+
+
+def _find_free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+FAST_API_PORT = _find_free_port()
+FRONTEND_PORT = _find_free_port()
+FAST_API_BASE_URL = f"http://localhost:{FAST_API_PORT}"
+FRONTEND_BASE_URL = f"http://localhost:{FRONTEND_PORT}"
+os.environ.setdefault("SQLITE_DB_PATH", SQLITE_E2E_DB_PATH)
 os.environ.setdefault(
     "AUTH_SECRET_KEY", "test-secret-key-for-e2e-tests-only-not-for-production-use"
 )
 os.environ.setdefault("INITIAL_SETUP_TOKEN", "test-initial-setup-token")
+os.environ.setdefault("CORS_ALLOW_ORIGINS", FRONTEND_BASE_URL)
+os.environ.setdefault("AUTH_FRONTEND_BASE_URL", FRONTEND_BASE_URL)
+os.environ.setdefault("AUTH_BACKEND_BASE_URL", FAST_API_BASE_URL)
 
 from main import app
 from frontend.frontend_anchor import FrontendAnchor
 
 
 FAST_API_HOST = "localhost"
-FAST_API_PORT = 8000
 VISUAL_ARTIFACTS_DIR = os.path.join(
     FrontendAnchor.get_location(),
     "tests",
@@ -43,8 +63,18 @@ VISUAL_ARTIFACTS_DIR = os.path.join(
 @pytest.fixture(scope="session", autouse=True)
 def start_fastapi_server():
     """
-    Launch FastAPI using in-memory SQLite and share it with Playwright.
+    Launch FastAPI against a dedicated migrated SQLite database for Playwright.
     """
+    if os.path.exists(SQLITE_E2E_DB_PATH):
+        os.remove(SQLITE_E2E_DB_PATH)
+
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=BACKEND_DIR,
+        check=True,
+        env=os.environ.copy(),
+    )
+
     # Start Uvicorn in a thread
     config = uvicorn.Config(
         app,
@@ -60,7 +90,7 @@ def start_fastapi_server():
     for _ in range(20):
         try:
             resp = httpx.get(
-                f"http://{FAST_API_HOST}:{FAST_API_PORT}/health",
+                f"{FAST_API_BASE_URL}/health",
                 timeout=1,
             )
             if resp.status_code == 200:
@@ -89,54 +119,46 @@ def is_debugging() -> bool:
     )
 
 
-def check_frontend_server_running(client) -> bool:
-    """Check if the frontend server is already running on port 5173."""
-    try:
-        res = client.get(
-            "http://localhost:5173",
-            timeout=1.0,
-        )
-        return res.status_code == 200
-    except httpx.RequestError:
-        return False
-
-
 # noinspection PyTypeChecker
 @pytest.fixture(scope="session", autouse=True)
 def check_start_frontend_server():
-    # Check whether the frontend server is already running on port 5173 -> if yes, skip starting it
+    frontend_location = FrontendAnchor.get_location()
+
+    process = subprocess.Popen(
+        ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", str(FRONTEND_PORT)],
+        cwd=frontend_location,
+        env={
+            **os.environ.copy(),
+            "VITE_API_URL": FAST_API_BASE_URL,
+        },
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        preexec_fn=os.setsid,  # allow killing process group
+    )
+
     with httpx.Client() as client:
-        if check_frontend_server_running(client):
-            yield  # Server already running, yield
-            return
-
-        # Starts the Vite frontend via `npm run dev` and ensures it's live before tests.
-        frontend_location = FrontendAnchor.get_location()
-
-        process = subprocess.Popen(
-            ["npm", "run", "dev"],
-            cwd=frontend_location,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            preexec_fn=os.setsid,  # allow a killing process group
-        )
-
-        # Wait for the frontend to become available
         for _ in range(30):
-            if check_frontend_server_running(client):
-                break
-            time.sleep(1)
+            try:
+                res = client.get(
+                    FRONTEND_BASE_URL,
+                    timeout=1.0,
+                )
+                if res.status_code == 200:
+                    break
+            except httpx.RequestError:
+                if process.poll() is not None:
+                    raise RuntimeError("Frontend server exited before becoming ready.") from None
+                time.sleep(1)
         else:
-            process.terminate()
+            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
             raise RuntimeError("Frontend server failed to start.")
 
-        yield  # run tests
+    yield  # run tests
 
-        # Teardown
-        os.killpg(
-            os.getpgid(process.pid),
-            signal.SIGTERM,
-        )
+    os.killpg(
+        os.getpgid(process.pid),
+        signal.SIGTERM,
+    )
 
 
 @pytest.fixture(scope="function")
