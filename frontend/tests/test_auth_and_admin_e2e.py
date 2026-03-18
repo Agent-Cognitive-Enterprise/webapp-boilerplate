@@ -95,3 +95,59 @@ def test_admin_supported_locale_change_is_visible_on_login_page(visual_page):
     page.get_by_text("English").click()
     expect(page.get_by_role("button", name=re.compile("Fran", re.IGNORECASE))).to_be_visible()
     snap("login_locale_selector_after_admin_update")
+
+
+def test_admin_can_create_deactivate_and_delete_user(visual_page):
+    reset_uninitialized_state()
+    seed_initialized_state(
+        site_name="E2E User Management Site",
+        users=[
+            SeedUser(
+                full_name="E2E Admin",
+                email="e2e-admin@example.com",
+                password="SetupAdminPass123!",
+                is_admin=True,
+            )
+        ],
+    )
+
+    page, snap = visual_page
+
+    _login(page, "e2e-admin@example.com", "SetupAdminPass123!")
+    expect(page).to_have_url(re.compile(".*/dashboard$"))
+
+    page.goto(f"{FRONTEND_BASE_URL}/users")
+    expect(page.locator('input[aria-label="user_management.field.full_name"]')).to_be_visible()
+
+    page.locator('input[aria-label="user_management.field.full_name"]').fill("Managed Browser User")
+    page.locator('input[aria-label="user_management.field.email"]').fill("managed-browser@example.com")
+    page.locator('input[aria-label="user_management.field.password"]').fill("ManagedPass123!")
+    snap("user_management_form_filled")
+    page.locator("form").first.locator("button").click()
+
+    managed_row = page.locator("tr", has_text="managed-browser@example.com")
+    expect(managed_row).to_be_visible()
+    expect(managed_row.get_by_text("Active")).to_be_visible()
+    snap("user_management_after_create")
+
+    managed_row.get_by_role("button", name="Deactivate").click()
+    expect(managed_row.get_by_text("Inactive")).to_be_visible()
+    expect(managed_row.get_by_role("button", name="Activate")).to_be_visible()
+    snap("user_management_after_deactivate")
+
+    page.goto(f"{FRONTEND_BASE_URL}/profile")
+    page.get_by_test_id("logout-button").click()
+    expect(page).to_have_url(re.compile(".*/login$"))
+
+    _login(page, "managed-browser@example.com", "ManagedPass123!")
+    expect(page.get_by_text("Invalid email or password")).to_be_visible()
+    snap("managed_user_login_blocked_after_deactivate")
+
+    _login(page, "e2e-admin@example.com", "SetupAdminPass123!")
+    expect(page).to_have_url(re.compile(".*/dashboard$"))
+
+    page.goto(f"{FRONTEND_BASE_URL}/users")
+    managed_row = page.locator("tr", has_text="managed-browser@example.com")
+    managed_row.get_by_role("button", name="Delete").click()
+    expect(managed_row).to_have_count(0)
+    snap("user_management_after_delete")
