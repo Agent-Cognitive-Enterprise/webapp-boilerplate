@@ -259,3 +259,113 @@ Examples:
 - `AGENTS.md` -> shared repository-wide instructions
 - `.github/copilot-instructions.md` -> GitHub Copilot-specific additions
 - other tool-specific config files -> optional extra behavior for a specific assistant
+
+---
+
+## Code Shape and Test Performance Rules
+
+These rules are mandatory unless there is a clearly documented reason to deviate.
+
+### 1. Avoid gravity wells
+
+A gravity well is a file that becomes too large, attracts unrelated logic, and gets harder to reason about, test, and safely modify.
+
+Rules:
+
+- Prefer small, focused files with a single clear responsibility.
+- Soft limit: keep source files under **400 lines**.
+- Hard limit: do not let source files exceed **600 lines** unless explicitly justified in comments or project notes.
+- If a file approaches the soft limit, split it before adding more logic.
+- Do not use a large file as a convenience bucket for “just one more thing”.
+- Organize by responsibility, not by dumping related-but-different concerns into one file.
+- When splitting, prefer extracting:
+  - domain logic
+  - adapters/integrations
+  - validation/serialization
+  - UI subcomponents
+  - test helpers
+- Generated files, lockfiles, migrations, and fixture snapshots are exempt, but handwritten source files are not.
+
+Heuristics that require refactoring even before line limits are reached:
+
+- the file mixes multiple responsibilities
+- the file is difficult to navigate without search
+- unrelated changes often touch the same file
+- tests require large setup because too much behavior lives together
+
+### 2. Avoid functions with too many arguments
+
+Functions with too many arguments are harder to understand, harder to call correctly, and usually signal missing structure.
+
+Rules:
+
+- Prefer **5 or fewer arguments** per function.
+- Hard limit: **7 arguments maximum**.
+- If a function needs more than 5 arguments, refactor.
+- Group related inputs into a typed object or structure rather than passing long primitive argument lists.
+- Prefer explicit domain types over long sequences of `str`, `int`, `bool`, `dict`, etc.
+- Avoid boolean flag accumulation. If a function has multiple boolean flags, redesign it.
+- If optional arguments keep growing, split the function into smaller functions or introduce a request/config object.
+- Public APIs should be especially strict here.
+
+Preferred remedies:
+
+- introduce a small typed parameter object
+- split orchestration from implementation
+- separate read/validate/transform/persist stages
+- move repeated argument groups into a domain model
+
+Do not hide bad design inside a giant “context” object. Group arguments only when they are meaningfully related.
+
+### 3. Tests must stay fast
+
+Slow tests reduce iteration speed and make the codebase hostile to development. Test speed is a feature.
+
+Rules:
+
+- Favor fast unit tests by default.
+- Investigate any test or test group that feels slow.
+- If tests become noticeably slower, stop and fix the cause rather than accepting the regression.
+- Avoid real network calls, unnecessary filesystem work, long sleeps, large fixtures, and heavyweight setup in normal test runs.
+- Mock or fake external systems unless the test is explicitly integration or end-to-end.
+- Keep fixtures minimal and reusable.
+- Prefer deterministic tests with small inputs.
+- Reset state cheaply.
+- Run only the minimal required setup for each test.
+
+Performance expectations:
+
+- Unit tests should usually run in milliseconds.
+- Any individual test taking around **>1 second** should be treated as suspicious and reviewed.
+- Any test suite slowdown should trigger investigation.
+- Add or maintain separate categories for:
+  - fast unit tests
+  - integration tests
+  - end-to-end tests
+- The default local and CI test command should prioritize the fast suite.
+
+When tests are slow, investigate and fix by checking for:
+
+- unnecessary sleeps or retry waits
+- real I/O where fakes would work
+- expensive global fixtures
+- database setup repeated per test when avoidable
+- oversized factories/fixtures
+- accidental integration coverage inside unit tests
+- poor test isolation causing cascading setup
+- inefficient algorithms in the code under test
+
+The correct response to slow tests is optimization, decomposition, or better test design, not simply raising timeouts.
+
+### Enforcement mindset
+
+When making changes:
+
+- do not add code to an already-large file without first considering extraction
+- do not add “just one more argument” to a function already near the limit
+- do not accept slow tests as normal
+
+If a rule must be broken, document:
+1. why the exception is necessary
+2. why simpler alternatives were rejected
+3. what future refactor would remove the exception
