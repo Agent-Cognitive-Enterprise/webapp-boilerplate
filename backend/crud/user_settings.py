@@ -1,9 +1,10 @@
 # /backend/crud/user_settings.py
 
 from uuid import UUID
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
-from sqlmodel import select, and_, func
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import and_, col, func, select
 
 from models.user_settings import UserSettings
 from schemas.user_settings import UserSettingsIn
@@ -24,7 +25,7 @@ async def upsert_user_settings(
 
     if user_settings:
         # Update existing
-        user_settings.settings = data.settings
+        user_settings.settings = data.settings or {}
         user_settings.updated_at = datetime.now(timezone.utc)
         user_settings.deleted_at = None
     else:
@@ -52,7 +53,7 @@ async def get_user_settings(
             and_(
                 UserSettings.user_id == user_id,
                 UserSettings.route == route,
-                UserSettings.deleted_at == None,
+                col(UserSettings.deleted_at).is_(None),
             )
         )
     )
@@ -68,7 +69,7 @@ async def soft_delete_user_settings(
             and_(
                 UserSettings.user_id == user_id,
                 UserSettings.route == route,
-                UserSettings.deleted_at == None,
+                col(UserSettings.deleted_at).is_(None),
             )
         )
     )
@@ -85,13 +86,13 @@ async def soft_delete_user_settings(
 
 async def count_user_settings(session: AsyncSession, user_id: UUID, route: str) -> int:
     result = await session.execute(
-        select(func.count(UserSettings.id)).where(
+        select(func.count(col(UserSettings.id))).where(
             and_(
                 UserSettings.user_id == user_id,
                 UserSettings.route == route,
-                UserSettings.deleted_at == None,
+                col(UserSettings.deleted_at).is_(None),
             )
         )
     )
 
-    return result.scalar()
+    return int(result.scalar() or 0)

@@ -3,7 +3,7 @@
 import datetime
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select, and_
+from sqlmodel import and_, col, select
 
 from models.password_reset_token import PasswordResetToken
 
@@ -13,7 +13,7 @@ async def create(
     user_id: uuid.UUID,
     token_hash: str,
     expires_at: datetime.datetime,
-    ip: str = None,
+    ip: str | None = None,
 ) -> PasswordResetToken:
     """Create a new password reset token."""
     reset_token = PasswordResetToken(
@@ -37,7 +37,7 @@ async def get_by_token_hash(
         select(PasswordResetToken).where(
             and_(
                 PasswordResetToken.token_hash == token_hash,
-                PasswordResetToken.deleted_at == None,
+                col(PasswordResetToken.deleted_at).is_(None),
             )
         )
     )
@@ -66,8 +66,8 @@ async def invalidate_user_tokens(
         select(PasswordResetToken).where(
             and_(
                 PasswordResetToken.user_id == user_id,
-                PasswordResetToken.used == False,
-                PasswordResetToken.deleted_at == None,
+                col(PasswordResetToken.used).is_(False),
+                col(PasswordResetToken.deleted_at).is_(None),
             )
         )
     )

@@ -47,7 +47,7 @@ def test_smtp_connection(config: SmtpConfig) -> None:
 
 
 # Prevent pytest from collecting this runtime function as a test.
-test_smtp_connection.__test__ = False
+setattr(test_smtp_connection, "__test__", False)
 
 
 def send_email(

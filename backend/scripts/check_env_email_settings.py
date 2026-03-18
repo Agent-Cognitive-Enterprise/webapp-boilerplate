@@ -71,6 +71,7 @@ def main() -> int:
     try:
         # Step 2: open SMTP connection
         print("2) Opening SMTP connection...")
+        server: smtplib.SMTP
         if use_ssl:
             server = smtplib.SMTP_SSL(host, port, timeout=timeout, context=context)
         else:
@@ -98,13 +99,13 @@ def main() -> int:
                 print("   OK: authenticated")
 
             print("6) Sending test email...")
-            msg = EmailMessage()
-            msg["Subject"] = "SMTP test"
-            msg["From"] = from_email
-            msg["To"] = to_email
-            msg.set_content("SMTP test email sent successfully.")
+            message = EmailMessage()
+            message["Subject"] = "SMTP test"
+            message["From"] = from_email
+            message["To"] = to_email
+            message.set_content("SMTP test email sent successfully.")
 
-            server.send_message(msg)
+            server.send_message(message)
             print("   OK: email sent")
             return 0
 

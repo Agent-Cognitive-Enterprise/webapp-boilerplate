@@ -1,0 +1,25 @@
+[tool.mypy]
+python_version = "3.11"
+explicit_package_bases = true
+files = [
+    "auth/cookies.py",
+    "crud",
+    "services/bootstrap.py",
+    "services/email_service.py",
+    "services/system_settings.py",
+    "services/ui_label_seed.py",
+    "scripts/check_email_config.py",
+    "scripts/check_env_email_settings.py",
+]
+exclude = [
+    "^alembic/",
+    "^frontend_e2e\\.db$",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "jose",
+    "jose.*",
+    "llama_cpp",
+]
+ignore_missing_imports = true

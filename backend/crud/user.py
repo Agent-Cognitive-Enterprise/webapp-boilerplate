@@ -44,7 +44,7 @@ async def get_by_full_name(
         select(User).where(
             and_(
                 User.full_name == full_name,
-                User.deleted_at == None,
+                col(User.deleted_at).is_(None),
             )
         )
     )
@@ -60,7 +60,7 @@ async def get_by_email(
         select(User).where(
             and_(
                 User.email == email,
-                User.deleted_at == None,
+                col(User.deleted_at).is_(None),
             )
         )
     )
@@ -89,7 +89,7 @@ async def get_full_names_by_ids(
     query = select(User.id, User.full_name).where(col(User.id).in_(user_ids))
 
     if not include_soft_deleted:
-        query = query.where(User.deleted_at == None)
+        query = query.where(col(User.deleted_at).is_(None))
 
     result = await session.execute(query)
     users = result.all()
@@ -104,7 +104,7 @@ async def get_all(
 ) -> list[User]:
     result = await session.execute(
         select(User)
-        .where(User.deleted_at == None)
-        .order_by(User.created_at.desc())
+        .where(col(User.deleted_at).is_(None))
+        .order_by(col(User.created_at).desc())
     )
     return list(result.scalars().all())

@@ -4,12 +4,14 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from services.email_service import SmtpConfig, test_smtp_connection
+if TYPE_CHECKING:
+    from services.email_service import SmtpConfig
 
 
 SMTP_KEYS = (
@@ -55,6 +57,8 @@ def _parse_bool(value: str | None, default: bool = True) -> bool:
 
 
 def _build_smtp_config(values: dict[str, str]) -> SmtpConfig | None:
+    from services.email_service import SmtpConfig
+
     host = values.get("SMTP_HOST")
     port_raw = values.get("SMTP_PORT")
     from_email = values.get("SMTP_FROM_EMAIL")
@@ -75,6 +79,12 @@ def _build_smtp_config(values: dict[str, str]) -> SmtpConfig | None:
         from_email=from_email.strip(),
         use_tls=_parse_bool(values.get("SMTP_USE_TLS"), default=True),
     )
+
+
+def test_smtp_connection(config: SmtpConfig) -> None:
+    from services.email_service import test_smtp_connection as email_service_test_smtp_connection
+
+    email_service_test_smtp_connection(config)
 
 
 def _detect_email_library(email_service_path: Path) -> list[str]:

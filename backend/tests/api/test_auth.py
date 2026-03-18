@@ -330,7 +330,7 @@ async def test_token_inactive_user(
 @pytest.mark.asyncio
 async def test_token_empty_email_and_password(client: AsyncClient):
     try:
-        response = await client.post(
+        await client.post(
             "/auth/token",
             data={
                 "username": "",

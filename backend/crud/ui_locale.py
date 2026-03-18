@@ -2,7 +2,8 @@
 
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from sqlalchemy import func
-from sqlmodel import select, and_
+from sqlmodel import and_, col, select
+from datetime import datetime, timezone
 
 from models.ui_locale import UiLocale
 
@@ -26,7 +27,7 @@ async def get_list(
     session: AsyncSession,
 ) -> list[UiLocale]:
     query = select(UiLocale).where(
-        UiLocale.deleted_at == None,
+        col(UiLocale.deleted_at).is_(None),
     )
     result = await session.execute(query)
 
@@ -42,7 +43,7 @@ async def get_by_locale(
         .where(
             and_(
                 UiLocale.locale == locale,
-                UiLocale.deleted_at == None,
+                col(UiLocale.deleted_at).is_(None),
             )
         )
         .limit(1)
@@ -79,8 +80,8 @@ async def update_values_hash(
 async def count(
     session: AsyncSession,
 ) -> int:
-    query = select(func.count(UiLocale.id)).where(
-        UiLocale.deleted_at == None,
+    query = select(func.count(col(UiLocale.id))).where(
+        col(UiLocale.deleted_at).is_(None),
     )
     result = await session.execute(query)
 
@@ -99,6 +100,6 @@ async def soft_delete(
     if db_ui_locale is None:
         return
 
-    db_ui_locale.deleted_at = func.now()
+    db_ui_locale.deleted_at = datetime.now(timezone.utc)
     session.add(db_ui_locale)
     await session.commit()

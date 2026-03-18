@@ -164,12 +164,34 @@ source .venv/bin/activate
 # run all backend tests
 PYTHONPATH=. pytest -q
 
+# run backend lint
+.venv/bin/ruff check .
+
+# run backend type checks
+PYTHONPATH=. .venv/bin/mypy --config-file pyproject.toml
+
 # run backend e2e tests
 PYTHONPATH=. pytest tests/e2e -q
 
 # run i18n audit
 PYTHONPATH=. python scripts/i18n_audit.py
 ```
+
+From the repository root, the default backend verification path is:
+
+```bash
+make verify-backend
+```
+
+The backend `mypy` gate is currently scoped to the typed backend verification path configured in `backend/pyproject.toml`:
+- `crud/`
+- `services/bootstrap.py`
+- `services/email_service.py`
+- `services/system_settings.py`
+- `services/ui_label_seed.py`
+- `auth/cookies.py`
+- `scripts/check_email_config.py`
+- `scripts/check_env_email_settings.py`
 
 ### Frontend
 

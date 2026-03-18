@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Iterable
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import col, select
 
 from models.ui_label import UiLabel
 from models.ui_locale import UiLocale
@@ -68,7 +68,10 @@ async def seed_ui_labels_for_locales(
         if not seed_locale:
             # Keep unsupported locales selectable without copying English labels.
             # Translations are created asynchronously by the existing add/translate flow.
-            query = select(UiLabel).where(UiLabel.locale == locale, UiLabel.deleted_at == None)
+            query = select(UiLabel).where(
+                UiLabel.locale == locale,
+                col(UiLabel.deleted_at).is_(None),
+            )
             result = await session.execute(query)
             existing_labels = result.scalars().all()
             values = sorted([row.value for row in existing_labels])
@@ -76,7 +79,7 @@ async def seed_ui_labels_for_locales(
 
             locale_query = select(UiLocale).where(
                 UiLocale.locale == locale,
-                UiLocale.deleted_at == None,
+                col(UiLocale.deleted_at).is_(None),
             ).limit(1)
             locale_result = await session.execute(locale_query)
             locale_row = locale_result.scalars().first()
@@ -92,7 +95,10 @@ async def seed_ui_labels_for_locales(
         if seed_locale != "en":
             labels.update(_read_seed_locale(seed_locale))
 
-        query = select(UiLabel).where(UiLabel.locale == locale, UiLabel.deleted_at == None)
+        query = select(UiLabel).where(
+            UiLabel.locale == locale,
+            col(UiLabel.deleted_at).is_(None),
+        )
         result = await session.execute(query)
         existing = {(row.key, row.locale): row for row in result.scalars().all()}
 
@@ -109,7 +115,7 @@ async def seed_ui_labels_for_locales(
 
         locale_query = select(UiLocale).where(
             UiLocale.locale == locale,
-            UiLocale.deleted_at == None,
+            col(UiLocale.deleted_at).is_(None),
         ).limit(1)
         locale_result = await session.execute(locale_query)
         locale_row = locale_result.scalars().first()

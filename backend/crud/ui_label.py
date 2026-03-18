@@ -4,8 +4,9 @@ import datetime
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import (
-    select,
     and_,
+    col,
+    select,
 )
 
 from crud.helper import normalize_ui_label_value
@@ -55,7 +56,7 @@ async def get_by_key_locale(
             and_(
                 UiLabel.key == key,
                 UiLabel.locale == locale,
-                UiLabel.deleted_at == None,
+                col(UiLabel.deleted_at).is_(None),
             )
         )
         .limit(1)
@@ -72,7 +73,7 @@ async def get_list_by_locale(
     query = select(UiLabel).where(
         and_(
             UiLabel.locale == locale,
-            UiLabel.deleted_at == None,
+            col(UiLabel.deleted_at).is_(None),
         )
     )
     result = await session.execute(query)

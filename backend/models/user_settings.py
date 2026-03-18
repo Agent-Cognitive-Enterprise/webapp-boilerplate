@@ -2,15 +2,12 @@
 
 import uuid
 from typing import Any, Dict
-from sqlmodel import Field, Column, JSON, UniqueConstraint
-from pydantic import ConfigDict
+from sqlmodel import Column, Field, JSON, UniqueConstraint
 
 from .base_model import BaseModel
 
 
 class UserSettings(BaseModel, table=True):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     __tablename__ = "user_settings"
     __table_args__ = (UniqueConstraint("user_id", "route", name="uq_user_route"),)
 

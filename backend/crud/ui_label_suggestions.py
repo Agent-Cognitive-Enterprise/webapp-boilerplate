@@ -4,9 +4,10 @@ import datetime
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import (
-    select,
     and_,
+    col,
     func,
+    select,
 )
 
 from crud.helper import normalize_ui_label_value
@@ -39,11 +40,11 @@ async def get_label_suggestions(
     suggestions.
     """
     stmt = (
-        select(UiLabelSuggestion.value, func.count(UiLabelSuggestion.id))
+        select(UiLabelSuggestion.value, func.count(col(UiLabelSuggestion.id)))
         .where(
             and_(
                 UiLabelSuggestion.label_id == label_id,
-                UiLabelSuggestion.deleted_at == None,
+                col(UiLabelSuggestion.deleted_at).is_(None),
             )
         )
         .group_by(UiLabelSuggestion.value)

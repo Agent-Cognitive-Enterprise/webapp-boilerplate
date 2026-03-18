@@ -22,7 +22,7 @@ router = APIRouter()
 async def authenticate_user(
     session: AsyncSession, email: EmailStr, password: str
 ) -> User | bool:
-    db_user: User = await get_user_by_email(session=session, email=email)
+    db_user = await get_user_by_email(session=session, email=email)
 
     if not db_user:
         return False
@@ -62,8 +62,8 @@ async def get_current_user(
 
     try:
         payload = jwt.decode(token, AUTH_SECRET_KEY, algorithms=[AUTH_ALGORITHM])
-        email: EmailStr = payload.get("sub")
-        if email is None:
+        email = payload.get("sub")
+        if not isinstance(email, str):
             raise get_credentials_exception()
         token_data = TokenData(email=email)
     except (JWTError, ValidationError):

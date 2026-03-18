@@ -1,4 +1,4 @@
-.PHONY: dev backend-migrate backend-dev frontend-dev test test-backend test-frontend lint build
+.PHONY: dev backend-migrate backend-dev frontend-dev test test-backend test-frontend lint lint-backend typecheck-backend verify-backend build
 
 dev:
 	@echo "Run backend and frontend in separate terminals:"
@@ -20,10 +20,19 @@ test: test-backend test-frontend
 test-backend:
 	cd backend && PYTHONPATH=. .venv/bin/pytest -q
 
+lint-backend:
+	cd backend && .venv/bin/ruff check .
+
+typecheck-backend:
+	cd backend && PYTHONPATH=. .venv/bin/mypy --config-file pyproject.toml
+
+verify-backend: lint-backend typecheck-backend test-backend
+
 test-frontend:
 	cd frontend && npm test
 
 lint:
+	$(MAKE) lint-backend
 	cd frontend && npm run lint
 
 build:

@@ -1,9 +1,10 @@
 # /backend/crud/refresh_token.py
 
-import uuid
-from sqlmodel import select, and_
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
+import uuid
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import and_, col, select
 
 from models.refresh_token import RefreshToken
 
@@ -37,7 +38,10 @@ async def get_by_token_hash(
 ) -> RefreshToken | None:
     q = await session.execute(
         select(RefreshToken).where(
-            and_(RefreshToken.token_hash == token_hash, RefreshToken.deleted_at == None)
+            and_(
+                RefreshToken.token_hash == token_hash,
+                col(RefreshToken.deleted_at).is_(None),
+            )
         )
     )
 
@@ -70,7 +74,7 @@ async def revoke_token_and_descendants(session: AsyncSession, rt: RefreshToken) 
             select(RefreshToken).where(
                 and_(
                     RefreshToken.rotated_from_id == current.id,
-                    RefreshToken.deleted_at == None,
+                    col(RefreshToken.deleted_at).is_(None),
                 )
             )
         )
@@ -88,8 +92,8 @@ async def revoke_all_for_user(session: AsyncSession, user_id: uuid.UUID) -> int:
         select(RefreshToken).where(
             and_(
                 RefreshToken.user_id == user_id,
-                RefreshToken.revoked == False,
-                RefreshToken.deleted_at == None,
+                col(RefreshToken.revoked).is_(False),
+                col(RefreshToken.deleted_at).is_(None),
             )
         )
     )

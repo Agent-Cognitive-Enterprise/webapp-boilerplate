@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import col, select
 
 from models.system_settings import SystemSettings
 from models.user import User
@@ -71,7 +71,7 @@ async def get_system_settings(
         select(SystemSettings)
         .where(
             SystemSettings.singleton_key == SINGLETON_KEY,
-            SystemSettings.deleted_at == None,
+            col(SystemSettings.deleted_at).is_(None),
         )
         .limit(1)
     )
@@ -162,7 +162,7 @@ async def _create_initial_admin(
         select(User)
         .where(
             User.email == admin_email,
-            User.deleted_at == None,
+            col(User.deleted_at).is_(None),
         )
         .limit(1)
     )

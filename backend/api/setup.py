@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import TypedDict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +33,17 @@ from utils.db import get_session
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+class ResolvedSetupDefaults(TypedDict):
+    smtp_host: str | None
+    smtp_port: int | None
+    smtp_username: str | None
+    smtp_password: str | None
+    smtp_from_email: str | None
+    smtp_use_tls: bool
+    auth_frontend_base_url: str | None
+    auth_backend_base_url: str | None
 
 
 def _send_setup_welcome_email_if_configured(
@@ -124,7 +136,9 @@ def _read_setup_email_defaults_from_env() -> SetupEmailDefaults | None:
     )
 
 
-def _resolve_setup_optional_defaults(payload: SetupInitializeRequest) -> dict[str, object]:
+def _resolve_setup_optional_defaults(
+    payload: SetupInitializeRequest,
+) -> ResolvedSetupDefaults:
     defaults = _read_setup_email_defaults_from_env()
     smtp_password_default = os.getenv("SMTP_PASSWORD")
 
@@ -292,7 +306,7 @@ async def run_initial_setup(
             port=settings.smtp_port,
             from_email=settings.smtp_from_email,
         ),
-        initialized_at=settings.initialized_at,
+        initialized_at=settings.initialized_at or settings.created_at,
     )
 
 

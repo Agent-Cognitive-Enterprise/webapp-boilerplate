@@ -1,6 +1,8 @@
 # /backend/auth/cookies.py
 
 from datetime import datetime, timezone
+from typing import Literal, cast
+
 from fastapi import Response
 
 import settings as settings
@@ -10,6 +12,11 @@ def set_refresh_cookie(response: Response, token: str, expires_at: datetime):
     # Compute Max-Age from the target expiration
     now = datetime.now(timezone.utc)
     max_age = max(0, int((expires_at - now).total_seconds()))
+
+    same_site = cast(
+        Literal["lax", "strict", "none"] | None,
+        settings.COOKIE_SAME_SITE,
+    )
 
     # Read settings dynamically so tests or runtime changes take effect
     response.set_cookie(
@@ -21,7 +28,7 @@ def set_refresh_cookie(response: Response, token: str, expires_at: datetime):
         domain=settings.COOKIE_DOMAIN,
         secure=bool(settings.COOKIE_SECURE),
         httponly=bool(settings.COOKIE_HTTPONLY),
-        samesite=settings.COOKIE_SAME_SITE,
+        samesite=same_site,
     )
 
 

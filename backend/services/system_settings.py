@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import col, select
 
 from models.system_settings import SystemSettings
 from services.bootstrap import SINGLETON_KEY, normalize_supported_locales
@@ -24,7 +24,7 @@ async def get_system_settings_row(
         select(SystemSettings)
         .where(
             SystemSettings.singleton_key == SINGLETON_KEY,
-            SystemSettings.deleted_at.is_(None),
+            col(SystemSettings.deleted_at).is_(None),
         )
         .limit(1)
     )

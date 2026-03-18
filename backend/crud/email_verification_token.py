@@ -2,7 +2,7 @@ import datetime
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import and_, select
+from sqlmodel import and_, col, select
 
 from models.email_verification_token import EmailVerificationToken
 
@@ -37,7 +37,7 @@ async def get_by_token_hash(
         select(EmailVerificationToken).where(
             and_(
                 EmailVerificationToken.token_hash == token_hash,
-                EmailVerificationToken.deleted_at == None,
+                col(EmailVerificationToken.deleted_at).is_(None),
             )
         )
     )
@@ -69,8 +69,8 @@ async def invalidate_user_tokens(
         select(EmailVerificationToken).where(
             and_(
                 EmailVerificationToken.user_id == user_id,
-                EmailVerificationToken.used == False,
-                EmailVerificationToken.deleted_at == None,
+                col(EmailVerificationToken.used).is_(False),
+                col(EmailVerificationToken.deleted_at).is_(None),
             )
         )
     )
