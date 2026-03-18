@@ -369,3 +369,59 @@ If a rule must be broken, document:
 1. why the exception is necessary
 2. why simpler alternatives were rejected
 3. what future refactor would remove the exception
+
+### Delivery flow
+
+When you finish the current task:
+
+- suggest the next task that most directly brings the project closer to its goal
+- if the user replies with `yes`, start working on that task immediately
+
+## Session handoff discipline
+
+At the end of each meaningful task, and before yielding control, update `HANDOFF.md`.
+
+Purpose:
+- Preserve enough context for a new session to resume work quickly.
+- Record what was completed, current status, and the immediate next step.
+
+Rules:
+- Read and follow `AGENTS.md`.
+- Keep `HANDOFF.md` concise, current, and action-oriented.
+- Prefer overwriting stale content rather than appending indefinitely.
+- Do not turn `HANDOFF.md` into a changelog, diary, or long narrative.
+- Keep entries factual, specific, and relevant to the current workstream.
+- Include only the minimum context needed for a fresh agent or session to continue effectively.
+- Always update the `Last updated` timestamp.
+- If priorities changed, explicitly rewrite `Current objective` and `Next step`.
+- If work is fully complete, mark that clearly and state what should be tackled next, if anything.
+- If blocked, state the blocker clearly and the exact condition required to unblock progress.
+- If `HANDOFF.md` grows beyond roughly 150 to 250 lines, compress it. Keep only current-relevant context and remove obsolete details.
+- Maintain the exact section structure shown below so future sessions can parse it quickly.
+
+Use the following template for `HANDOFF.md`:
+
+# HANDOFF
+
+## Current objective
+...
+
+## Completed in this session
+- ...
+- ...
+
+## Current status
+...
+
+## Next step
+...
+
+## Important files
+- path/to/file
+- path/to/file
+
+## Notes for next session
+...
+
+## Last updated
+YYYY-MM-DD HH:MM TZ

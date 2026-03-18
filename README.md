@@ -106,6 +106,7 @@ python main.py
 ```
 
 Backend runs on `http://localhost:8000`.
+The backend does not create or mutate schema on startup; apply Alembic migrations before running the app.
 
 ### 3. Frontend Setup
 
@@ -196,8 +197,9 @@ From the repository root:
 make dev
 ```
 
-This prints the two commands to run in separate terminals:
+This prints the commands to run:
 
+- `make backend-migrate`
 - `make backend-dev`
 - `make frontend-dev`
 
