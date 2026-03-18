@@ -151,3 +151,32 @@ def test_admin_can_create_deactivate_and_delete_user(visual_page):
     managed_row.get_by_role("button", name="Delete").click()
     expect(managed_row).to_have_count(0)
     snap("user_management_after_delete")
+
+
+def test_admin_email_settings_check_shows_validation_feedback(visual_page):
+    reset_uninitialized_state()
+    seed_initialized_state(
+        site_name="E2E Admin Settings Validation Site",
+        users=[
+            SeedUser(
+                full_name="E2E Admin",
+                email="e2e-admin@example.com",
+                password="SetupAdminPass123!",
+                is_admin=True,
+            )
+        ],
+    )
+
+    page, snap = visual_page
+
+    _login(page, "e2e-admin@example.com", "SetupAdminPass123!")
+    expect(page).to_have_url(re.compile(".*/dashboard$"))
+
+    page.goto(f"{FRONTEND_BASE_URL}/admin/settings")
+    expect(page.get_by_text("Admin settings")).to_be_visible()
+
+    page.get_by_role("button", name="Check email settings").click()
+    expect(
+        page.get_by_text("smtp_host, smtp_port and smtp_from_email are required")
+    ).to_be_visible()
+    snap("admin_settings_email_check_validation_feedback")

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import delete
 from sqlmodel import select
 
+from auth.auth_handler import create_access_token
 from frontend.tests.conftest import run_async_safely
 from models.system_settings import SystemSettings
 from models.ui_label import UiLabel
@@ -115,3 +116,7 @@ def read_system_settings() -> SystemSettings | None:
             return result.scalars().first()
 
     return run_async_safely(_task())
+
+
+def create_test_access_token(email: str) -> str:
+    return create_access_token(data={"sub": email})

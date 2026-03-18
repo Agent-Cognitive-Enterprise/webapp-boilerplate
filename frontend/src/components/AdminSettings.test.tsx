@@ -5,7 +5,7 @@ import {MemoryRouter, Route, Routes} from "react-router-dom";
 import AdminSettings from "./AdminSettings";
 import {AuthContext} from "../contexts/AuthContext";
 import {UiLabelProvider} from "../contexts/UiLabelProvider";
-import {getAdminSettings, updateAdminSettings} from "../api/adminSettings";
+import {checkAdminEmailSettings, getAdminSettings, updateAdminSettings} from "../api/adminSettings";
 import api from "../api/api";
 
 vi.mock("../api/adminSettings", () => ({
@@ -469,5 +469,44 @@ describe("AdminSettings", () => {
                 && payload?.key === "admin.settings.ai_keys",
             )).toBe(true);
         });
+    });
+
+    it("shows backend feedback when checking email settings fails", async () => {
+        vi.mocked(getAdminSettings).mockResolvedValue({
+            site_name: "ACE Site",
+            default_locale: "en",
+            supported_locales: ["en"],
+            site_logo: null,
+            background_image: null,
+            openai_api_key_masked: null,
+            deepseek_api_key_masked: null,
+            admin_email: "admin@example.com",
+            smtp_host: null,
+            smtp_port: null,
+            smtp_username: null,
+            smtp_password_masked: null,
+            smtp_from_email: null,
+            smtp_use_tls: true,
+            auth_frontend_base_url: null,
+            auth_backend_base_url: null,
+            email_configured: false,
+        });
+        vi.mocked(checkAdminEmailSettings).mockRejectedValue({
+            response: {
+                data: {
+                    detail: "smtp_host, smtp_port and smtp_from_email are required",
+                },
+            },
+        });
+
+        renderAdminSettings(true);
+        await waitFor(() => expect(getAdminSettings).toHaveBeenCalledTimes(1));
+
+        fireEvent.click(await screen.findByRole("button", {name: "Check email settings"}));
+
+        await waitFor(() => expect(checkAdminEmailSettings).toHaveBeenCalledTimes(1));
+        expect(
+            await screen.findByText("smtp_host, smtp_port and smtp_from_email are required")
+        ).toBeInTheDocument();
     });
 });

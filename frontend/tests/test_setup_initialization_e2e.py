@@ -8,6 +8,7 @@ from playwright.sync_api import expect
 from frontend.tests.conftest import FAST_API_BASE_URL, FRONTEND_BASE_URL
 from frontend.tests.state_helpers import (
     SeedUser,
+    create_test_access_token,
     read_system_settings,
     reset_uninitialized_state,
     seed_initialized_state,
@@ -16,6 +17,23 @@ from frontend.tests.state_helpers import (
 
 
 SETUP_TOKEN = "test-initial-setup-token"
+
+
+def _login(page, email: str, password: str) -> None:
+    page.goto(f"{FRONTEND_BASE_URL}/login")
+    expect(page.get_by_label("email")).to_be_visible()
+    expect(page.get_by_label("password")).to_be_visible()
+    expect(page.locator("button[type='submit']")).to_be_visible()
+    page.get_by_label("email").fill(email)
+    page.get_by_label("password").fill(password)
+    page.locator("button[type='submit']").click()
+
+
+def _authenticate_as_seeded_user(page, email: str, password: str) -> None:
+    del password
+    token = create_test_access_token(email)
+    page.goto(f"{FRONTEND_BASE_URL}/login")
+    page.evaluate("(value) => window.localStorage.setItem('token', value)", token)
 
 
 def test_first_run_setup_journey(visual_page):
@@ -73,12 +91,7 @@ def test_admin_settings_has_no_default_locale_selector_and_saves_supported_local
 
     page, snap = visual_page
 
-    page.goto(f"{FRONTEND_BASE_URL}/login")
-    page.get_by_label("email").fill("e2e-admin@example.com")
-    page.get_by_label("password").fill("SetupAdminPass123!")
-    page.locator("button[type='submit']").click()
-    expect(page).to_have_url(re.compile(".*/dashboard$"))
-
+    _authenticate_as_seeded_user(page, "e2e-admin@example.com", "SetupAdminPass123!")
     page.goto(f"{FRONTEND_BASE_URL}/admin/settings")
     expect(page.get_by_text("Admin settings")).to_be_visible()
     snap("admin_settings_initial")
