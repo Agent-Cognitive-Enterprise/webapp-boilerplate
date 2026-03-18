@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from "react";
-import {Link, useNavigate} from "react-router-dom";
+import {Link} from "react-router-dom";
 import {checkSetupEmailSettings, runSetup} from "../api/setup";
 import {
     getSetupCopy,
@@ -67,7 +67,6 @@ function parseLocales(raw: string): string[] {
 }
 
 export default function SetupWizard({isInitialized, onSetupComplete, seedLocales, emailDefaults}: SetupWizardProps) {
-    const navigate = useNavigate();
     const normalizedSeedLocales = useMemo(
         () => parseLocales((seedLocales ?? []).join(",")),
         [seedLocales],
@@ -228,7 +227,6 @@ export default function SetupWizard({isInitialized, onSetupComplete, seedLocales
                     : {}),
             });
             onSetupComplete();
-            navigate("/login", {replace: true});
         } catch (err: any) {
             const apiDetail = err?.response?.data?.detail;
             setFormError(typeof apiDetail === "string" ? apiDetail : copy.genericError);
