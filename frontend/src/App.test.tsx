@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import App from './App';
 import { AuthContext } from './contexts/AuthContext';
-import { getSetupStatus } from './api/setup';
+import { getSetupStatus, runSetup } from './api/setup';
 import { fetchPublicBranding } from './api/appConfig';
 
 vi.mock('./hooks/useKeepUserLoggedIn.ts', () => ({
@@ -12,6 +12,7 @@ vi.mock('./hooks/useKeepUserLoggedIn.ts', () => ({
 
 vi.mock('./api/setup.ts', () => ({
   getSetupStatus: vi.fn(),
+  runSetup: vi.fn(),
 }));
 vi.mock('./api/appConfig.ts', () => ({
   fetchPublicBranding: vi.fn(),
@@ -117,6 +118,24 @@ describe('App routing and navigation', () => {
 
     await waitFor(() => expect(screen.getByText('First-Run Setup')).toBeInTheDocument());
     expect(screen.queryByText('Dashboard Page')).not.toBeInTheDocument();
+  });
+
+  it('redirects to /login immediately after setup completes', async () => {
+    vi.mocked(getSetupStatus).mockResolvedValue({ is_initialized: false, seed_locales: ['en', 'fr'] } as any);
+    vi.mocked(runSetup).mockResolvedValue({ data: {} } as any);
+
+    renderApp({ token: null, user: null }, '/setup');
+
+    await waitFor(() => expect(screen.getByText('First-Run Setup')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('Initial setup token'), { target: { value: 'token-123' } });
+    fireEvent.change(screen.getByLabelText('Site name'), { target: { value: 'My Site' } });
+    fireEvent.change(screen.getByLabelText('Admin email'), { target: { value: 'admin@example.com' } });
+    fireEvent.change(screen.getByLabelText('Admin password'), { target: { value: 'StrongPass123!' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Initialize application' }));
+
+    await waitFor(() => expect(runSetup).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText('Login Page')).toBeInTheDocument());
   });
 
   it('shows backend offline overlay before setup when backend is unreachable', async () => {

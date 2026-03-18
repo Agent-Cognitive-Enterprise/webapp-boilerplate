@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import InitializedAppShell from "./components/InitializedAppShell.tsx";
@@ -26,6 +26,7 @@ function BackendOfflineOverlay({
 
 export default function App() {
     const location = useLocation();
+    const [shouldRedirectToLoginAfterSetup, setShouldRedirectToLoginAfterSetup] = useState(false);
     const {
         setupLoading,
         isInitialized,
@@ -61,7 +62,10 @@ export default function App() {
                             element={
                                 <SetupWizard
                                     isInitialized={false}
-                                    onSetupComplete={() => setIsInitialized(true)}
+                                    onSetupComplete={() => {
+                                        setShouldRedirectToLoginAfterSetup(true);
+                                        setIsInitialized(true);
+                                    }}
                                     seedLocales={seedLocales}
                                     emailDefaults={setupEmailDefaults}
                                 />
@@ -76,6 +80,9 @@ export default function App() {
     }
 
     if (isInitialized && location.pathname === "/setup") {
+        if (shouldRedirectToLoginAfterSetup) {
+            return <Navigate to="/login" replace />;
+        }
         return (
             <Suspense fallback={<div className="min-h-[40vh]" />}>
                 <SetupWizard isInitialized={true} onSetupComplete={() => undefined} seedLocales={seedLocales} />

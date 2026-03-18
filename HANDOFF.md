@@ -1,16 +1,15 @@
 # HANDOFF
 
 ## Current objective
-Continue improving project structure and workflow discipline, with the next focus on expanding cross-stack browser coverage for the remaining auth/email journeys.
+Continue improving cross-stack browser coverage, with the next focus on the remaining auth/email journeys after stabilizing the first-run setup flow in CI.
 
 ## Completed in this session
-- Added a `frontend-e2e` GitHub Actions job in `.github/workflows/ci.yml` that installs backend deps, frontend deps, Chromium, and runs `PYTHONPATH=..:. pytest ../frontend/tests -q`.
-- Configured CI to upload `frontend/tests/artifacts` automatically when browser tests fail.
-- Updated `frontend/README.md` to state that the Playwright browser suite now runs in CI and that artifacts are uploaded on failure.
-- Fixed the browser CI bootstrap so Playwright is installed via backend dev dependencies and Chromium is installed with `python -m playwright`, which matches the Python-based test harness.
+- Fixed the setup-complete routing race in `frontend/src/App.tsx` by adding a one-shot redirect to `/login` immediately after first-run setup succeeds.
+- Added a regression test in `frontend/src/App.test.tsx` that submits the real setup form through `App` and asserts the post-setup login redirect.
+- Re-ran the full frontend verification path: `npm test`, `npm run lint`, `npm run build`, and `PYTHONPATH=..:. .venv/bin/pytest ../frontend/tests -q`.
 
 ## Current status
-CI now covers backend quality gates, frontend unit/lint/build, and the frontend Playwright browser suite. The browser job now installs the Python Playwright package from `backend/requirements-dev.txt` and invokes the installer through `python -m playwright`, avoiding missing-CLI failures in GitHub Actions.
+The first-run setup browser flow is passing again. The app now preserves the intended `/login` redirect after setup submission while still showing the “already configured” screen for later manual visits to `/setup`.
 
 ## Next step
 Add browser e2e coverage for the remaining auth/email journeys, starting with forgot-password/reset-password and email-verification flows.
@@ -18,15 +17,13 @@ Add browser e2e coverage for the remaining auth/email journeys, starting with fo
 ## Important files
 - AGENTS.md
 - HANDOFF.md
-- .github/workflows/ci.yml
-- backend/requirements-dev.txt
-- frontend/README.md
-- frontend/tests/conftest.py
+- frontend/src/App.tsx
+- frontend/src/App.test.tsx
 - frontend/tests/test_auth_and_admin_e2e.py
 - frontend/tests/test_setup_initialization_e2e.py
 
 ## Notes for next session
-The browser CI job reuses the same backend-driven Playwright harness as local runs, so keep executing it from `backend` with `PYTHONPATH=..:. pytest ../frontend/tests -q`. The Playwright Python package is now part of backend dev dependencies, so docs and automation should treat browser support as built in rather than a manual extra install. The next highest-value browser gaps are password reset and email verification, because backend API/e2e coverage exists but there is still little true browser-level proof for those flows.
+The setup failure was caused by a frontend state/navigation race: after setup completed, `isInitialized` flipped before the router transition landed, so the browser stayed on `/setup`. The fix is in `frontend/src/App.tsx`, not in the backend setup API. Keep using the backend-driven browser harness from `backend` with `PYTHONPATH=..:. .venv/bin/pytest ../frontend/tests -q`.
 
 ## Last updated
-2026-03-18 11:28 UTC
+2026-03-18 11:32 UTC
