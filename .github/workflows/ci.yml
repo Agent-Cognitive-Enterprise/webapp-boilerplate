@@ -68,3 +68,52 @@ jobs:
 
       - name: Verify production build
         run: npm run build
+
+  frontend-e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      AUTH_SECRET_KEY: ci-test-secret-key
+      INITIAL_SETUP_TOKEN: ci-test-setup-token
+      APP_ENV: test
+      DB_TYPE: sqlite
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: playwright install --with-deps chromium
+
+      - name: Run frontend browser tests
+        run: PYTHONPATH=..:. pytest ../frontend/tests -q
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-playwright-artifacts
+          path: frontend/tests/artifacts
+          if-no-files-found: ignore

@@ -1,33 +1,30 @@
 # HANDOFF
 
 ## Current objective
-Continue improving project structure and workflow discipline, with the next focus on expanding automated cross-stack coverage in CI.
+Continue improving project structure and workflow discipline, with the next focus on expanding cross-stack browser coverage for the remaining auth/email journeys.
 
 ## Completed in this session
-- Added backend verification commands in `Makefile` for `lint-backend`, `typecheck-backend`, and `verify-backend`.
-- Added backend CI gates for `ruff`, scoped `mypy`, and the full backend pytest suite in `.github/workflows/ci.yml`.
-- Added `backend/pyproject.toml` to define the initial typed backend verification surface for `mypy`.
-- Fixed backend lint/type issues in CRUD/services/auth helper code so the new backend verification path passes cleanly.
-- Updated `README.md` to document the backend lint/type/test workflow and the current `mypy` scope.
+- Added a `frontend-e2e` GitHub Actions job in `.github/workflows/ci.yml` that installs backend deps, frontend deps, Chromium, and runs `PYTHONPATH=..:. pytest ../frontend/tests -q`.
+- Configured CI to upload `frontend/tests/artifacts` automatically when browser tests fail.
+- Updated `frontend/README.md` to state that the Playwright browser suite now runs in CI and that artifacts are uploaded on failure.
 
 ## Current status
-Backend quality gates are now part of the standard local and CI workflow. `make verify-backend` runs `ruff`, the scoped backend `mypy` gate from `backend/pyproject.toml`, and the full backend pytest suite successfully. Frontend browser coverage from the prior task remains in place and documented.
+CI now covers backend quality gates, frontend unit/lint/build, and the frontend Playwright browser suite. Local verification for this task passed with the full backend suite, the full frontend unit suite, and the full frontend Playwright suite.
 
 ## Next step
-Add the frontend Playwright browser suite to CI so the new cross-stack flows run automatically on pull requests instead of only locally.
+Add browser e2e coverage for the remaining auth/email journeys, starting with forgot-password/reset-password and email-verification flows.
 
 ## Important files
 - AGENTS.md
 - HANDOFF.md
-- Makefile
 - .github/workflows/ci.yml
-- backend/pyproject.toml
-- README.md
-- backend/scripts/check_email_config.py
-- backend/services/email_service.py
+- frontend/README.md
+- frontend/tests/conftest.py
+- frontend/tests/test_auth_and_admin_e2e.py
+- frontend/tests/test_setup_initialization_e2e.py
 
 ## Notes for next session
-The backend `mypy` gate is intentionally scoped to the currently typed backend verification surface listed in `backend/pyproject.toml`; do not describe it as whole-backend type coverage. The next useful move is CI coverage for `frontend/tests`, likely by reusing the backend venv Playwright setup that already works locally.
+The browser CI job reuses the same backend-driven Playwright harness as local runs, so keep executing it from `backend` with `PYTHONPATH=..:. pytest ../frontend/tests -q`. The next highest-value browser gaps are password reset and email verification, because backend API/e2e coverage exists but there is still little true browser-level proof for those flows.
 
 ## Last updated
-2026-03-18 11:12 UTC
+2026-03-18 11:15 UTC

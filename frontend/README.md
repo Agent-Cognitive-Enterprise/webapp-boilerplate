@@ -130,6 +130,7 @@ PYTHONPATH=..:. .venv/bin/pytest ../frontend/tests -q
 ```
 
 The test suite starts a dedicated migrated backend database plus frontend dev server automatically.
+The same browser suite now runs in GitHub Actions CI on pushes and pull requests to `main`.
 
 #### Visual Review Artifacts (Screenshots + Checklist)
 
@@ -140,6 +141,8 @@ Playwright E2E tests can now emit visual artifacts per test:
 
 Artifacts are written to:
 - `frontend/tests/artifacts/<test_name>/`
+
+In CI, these artifacts are uploaded automatically on browser-test failure.
 
 Each folder contains:
 - `*.png` screenshots,
