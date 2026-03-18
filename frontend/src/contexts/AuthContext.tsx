@@ -3,6 +3,7 @@
 import {createContext, useState, useEffect} from 'react';
 import type {ReactNode} from 'react';
 import {useNavigate} from 'react-router-dom';
+import { clearAccessToken, getAccessToken, setAccessToken } from '../auth/tokenStore.ts';
 import {loginUser, fetchUserProfile, registerUser, logoutUser} from '../api/auth.ts';
 
 // Define types for user and context
@@ -30,9 +31,15 @@ interface AuthProviderProps {
 }
 
 const AuthProvider = ({children}: AuthProviderProps) => {
-    const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+    const [token, setToken] = useState<string | null>(getAccessToken());
     const [user, setUser] = useState<User | null>(null);
     const navigate = useNavigate();
+
+    const clearAuthState = () => {
+        setToken(null);
+        setUser(null);
+        clearAccessToken();
+    };
 
     useEffect(() => {
         if (token) {
@@ -42,13 +49,13 @@ const AuthProvider = ({children}: AuthProviderProps) => {
                     setUser(userData);
                 } catch (err) {
                     console.error('Failed to fetch user profile:', err);
-                    setToken(null);
-                    setUser(null);
-                    localStorage.removeItem('token');
+                    clearAuthState();
                     navigate('/login');
                 }
             };
-            getUser();
+            void getUser();
+        } else {
+            setUser(null);
         }
     }, [navigate, token]);
 
@@ -56,8 +63,8 @@ const AuthProvider = ({children}: AuthProviderProps) => {
         try {
             const response = await loginUser({username, password});
             if (response?.access_token) {
+                setAccessToken(response.access_token);
                 setToken(response.access_token);
-                localStorage.setItem('token', response.access_token);
                 const userProfile = await fetchUserProfile();
                 setUser(userProfile);
                 navigate('/dashboard');
@@ -84,23 +91,20 @@ const AuthProvider = ({children}: AuthProviderProps) => {
     };
 
     const logout = async () => {
-        console.log('Received logout request');
-
-        // Call backend to revoke refresh token
-        await logoutUser();
-
-        // Clear local state
-        setToken(null);
-        setUser(null);
-
-        // Navigate to login
-        navigate('/login');
+        try {
+            await logoutUser();
+        } catch (error) {
+            console.error('Backend logout failed:', error);
+        } finally {
+            clearAuthState();
+            navigate('/login');
+        }
     };
 
     const setTokenInContext = (newToken: string | null) => {
         setToken(newToken);
-        if (newToken) localStorage.setItem("token", newToken);
-        else localStorage.removeItem("token");
+        if (newToken) setAccessToken(newToken);
+        else clearAccessToken();
     };
 
     return (

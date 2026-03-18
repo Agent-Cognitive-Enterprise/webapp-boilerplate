@@ -55,14 +55,5 @@ export async function registerUser(payload: RegisterPayload): Promise<void> {
 }
 
 export async function logoutUser(): Promise<void> {
-    try {
-        // Notify backend to revoke refresh token
-        await api.post("/auth/logout");
-    } catch (error) {
-        // Log error but continue with local logout
-        console.error("Backend logout failed:", error);
-    } finally {
-        // Always clear local storage
-        localStorage.removeItem("token");
-    }
+    await api.post("/auth/logout");
 }

@@ -3,6 +3,7 @@
 import axios from "axios";
 import type {AxiosError, AxiosResponse} from "axios";
 import {AxiosHeaders} from "axios";
+import { clearAccessToken, getAccessToken, setAccessToken } from "../auth/tokenStore.ts";
 import type {ExtendedAxiosRequestConfig, RefreshResponse} from "./types";
 
 // Clear the one-shot reload flag if present (prevents reload loops)
@@ -66,7 +67,7 @@ api.interceptors.request.use((config) => {
     const cfg = config as ExtendedAxiosRequestConfig;
     if (!cfg.headers) cfg.headers = new AxiosHeaders();
     if (!cfg.skipAuthHeader) {
-        const token = localStorage.getItem("token");
+        const token = getAccessToken();
         if (token) (cfg.headers as Record<string, string>).Authorization = `Bearer ${token}`;
     }
     return cfg;
@@ -137,7 +138,7 @@ api.interceptors.response.use(
                 } as ExtendedAxiosRequestConfig);
                 const newToken = (resp.data as RefreshResponse)?.access_token;
                 if (typeof newToken !== "string") throw new Error("Invalid refresh token");
-                localStorage.setItem("token", newToken);
+                setAccessToken(newToken);
                 notifySubscribersSuccess(newToken);
                 return newToken;
             })();
@@ -152,7 +153,7 @@ api.interceptors.response.use(
                 return api.request(retryConfig);
             } catch (refreshErr) {
                 notifySubscribersError(refreshErr);
-                localStorage.removeItem("token");
+                clearAccessToken();
                 window.location.href = "/login";
                 return Promise.reject(refreshErr);
             } finally {
