@@ -7,7 +7,7 @@ import UiLabel from "./UiLabel.tsx";
 import {useT} from "../hooks/useT.ts";
 
 interface AuthContextType {
-    register: (full_name: string, email: string, password: string) => void;
+    register: (full_name: string, email: string, password: string) => Promise<void>;
 }
 
 const Register = () => {
@@ -16,16 +16,25 @@ const Register = () => {
         email: '',
         password: ''
     });
+    const [error, setError] = useState<string | null>(null);
 
     const {register} = useContext(AuthContext) as AuthContextType;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (error) {
+            setError(null);
+        }
         setFormData({...formData, [e.target.name]: e.target.value});
     };
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        register(formData.full_name, formData.email, formData.password);
+        setError(null);
+        try {
+            await register(formData.full_name, formData.email, formData.password);
+        } catch (err: any) {
+            setError(err?.message || "Registration failed. Please try again.");
+        }
     };
 
     const placeholderEnterYourFullName = useT("register.placeholder.enter_your_full_name");
@@ -41,6 +50,12 @@ const Register = () => {
                 <h2 className="mb-6 text-center text-2xl font-bold text-slate-800 sm:text-3xl">
                     <UiLabel k="register.title.register"/>
                 </h2>
+
+                {error && (
+                    <div className="mb-4 rounded-md border border-red-400 bg-red-100 p-3 text-red-700">
+                        {error}
+                    </div>
+                )}
 
                 <label className="block mb-4">
                     <span className="ace-field-label">

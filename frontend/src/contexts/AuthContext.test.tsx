@@ -6,7 +6,7 @@ import React from "react";
 import { AuthContext, AuthProvider } from "./AuthContext.tsx";
 import { notifySessionInvalidated } from "../auth/sessionEvents.ts";
 import { clearAccessToken, getAccessToken } from "../auth/tokenStore.ts";
-import { fetchUserProfile, loginUser, logoutUser } from "../api/auth.ts";
+import { fetchUserProfile, loginUser, logoutUser, registerUser } from "../api/auth.ts";
 
 const mockNavigate = vi.fn();
 
@@ -47,6 +47,17 @@ function ContextHarness() {
                 }}
             >
                 Login
+            </button>
+            <button
+                type="button"
+                onClick={() => {
+                    setLoginError(null);
+                    void auth.register("user@example.com", "user@example.com", "SecurePass123!").catch((error: Error) => {
+                        setLoginError(error.message);
+                    });
+                }}
+            >
+                Register
             </button>
             <button type="button" onClick={() => void auth.logout()}>
                 Logout
@@ -134,6 +145,23 @@ describe("AuthProvider", () => {
             )
         );
         expect(mockNavigate).not.toHaveBeenCalledWith("/dashboard");
+    });
+
+    it("surfaces backend duplicate-email errors during registration", async () => {
+        vi.mocked(registerUser).mockRejectedValue({
+            response: {
+                status: 400,
+                data: { detail: "Email already registered." },
+            },
+        });
+
+        renderProvider();
+        fireEvent.click(screen.getByRole("button", { name: "Register" }));
+
+        await waitFor(() =>
+            expect(screen.getByTestId("login-error")).toHaveTextContent("Email already registered.")
+        );
+        expect(mockNavigate).not.toHaveBeenCalledWith("/login");
     });
 
     it("responds to shared session invalidation by clearing auth state and redirecting", async () => {

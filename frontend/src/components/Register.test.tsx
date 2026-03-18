@@ -72,5 +72,25 @@ describe('Register Component', () => {
       expect(mockRegister).toHaveBeenCalledWith('Test User', 'test@example.com', 'SecurePass123!');
     });
   });
-});
 
+  it('shows duplicate-email errors from register()', async () => {
+    mockRegister.mockRejectedValueOnce(new Error('Email already registered.'));
+    renderRegister();
+
+    fireEvent.change(screen.getByRole('textbox', { name: /full_name/i }), {
+      target: { value: 'Test User' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /email/i }), {
+      target: { value: 'test@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'SecurePass123!' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /register/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Email already registered.')).toBeInTheDocument();
+    });
+  });
+});

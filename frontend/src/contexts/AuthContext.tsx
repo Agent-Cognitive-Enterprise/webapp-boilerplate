@@ -98,8 +98,21 @@ const AuthProvider = ({children}: AuthProviderProps) => {
     };
 
     const register = async (full_name: string, email: string, password: string) => {
-        await registerUser({full_name, email, password});
-        navigate('/login');
+        try {
+            await registerUser({full_name, email, password});
+            navigate('/login');
+        } catch (err: any) {
+            const status = err.response?.status;
+            const detail = err.response?.data?.detail;
+
+            if (status === 400 && typeof detail === "string") {
+                throw new Error(detail);
+            }
+            if (err.message) {
+                throw err;
+            }
+            throw new Error("Registration failed. Please try again.");
+        }
     };
 
     const logout = async () => {
