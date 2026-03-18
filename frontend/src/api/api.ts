@@ -3,6 +3,7 @@
 import axios from "axios";
 import type {AxiosError, AxiosResponse} from "axios";
 import {AxiosHeaders} from "axios";
+import { notifySessionInvalidated } from "../auth/sessionEvents.ts";
 import { clearAccessToken, getAccessToken, setAccessToken } from "../auth/tokenStore.ts";
 import type {ExtendedAxiosRequestConfig, RefreshResponse} from "./types";
 
@@ -154,7 +155,7 @@ api.interceptors.response.use(
             } catch (refreshErr) {
                 notifySubscribersError(refreshErr);
                 clearAccessToken();
-                window.location.href = "/login";
+                notifySessionInvalidated("refresh_failed");
                 return Promise.reject(refreshErr);
             } finally {
                 isRefreshing = false;

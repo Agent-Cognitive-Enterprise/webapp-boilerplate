@@ -55,5 +55,8 @@ export async function registerUser(payload: RegisterPayload): Promise<void> {
 }
 
 export async function logoutUser(): Promise<void> {
-    await api.post("/auth/logout");
+    await api.post("/auth/logout", undefined, {
+        skipAuthHeader: true,
+        skipAuthRefresh: true,
+    } as ExtendedAxiosRequestConfig);
 }

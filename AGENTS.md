@@ -112,6 +112,9 @@ Prefer repository-standard commands when they exist, for example:
 Minimum rule:
 - run the narrowest relevant checks while iterating,
 - run the broader required suite before marking work complete.
+- for meaningful backend changes, run the full backend test suite before marking work complete
+- for meaningful frontend changes, run the full frontend test suite before marking work complete
+- for changes that affect both stacks or shared behavior, run both full backend and full frontend suites before marking work complete
 
 Do not leave the repository in a knowingly failing state unless the task explicitly asks for a spike, failing repro, or partial draft.
 

@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import React from "react";
 
 import { AuthContext, AuthProvider } from "./AuthContext.tsx";
+import { notifySessionInvalidated } from "../auth/sessionEvents.ts";
 import { clearAccessToken, getAccessToken } from "../auth/tokenStore.ts";
 import { fetchUserProfile, loginUser, logoutUser } from "../api/auth.ts";
 
@@ -99,6 +100,28 @@ describe("AuthProvider", () => {
 
         await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("persisted-token"));
         fireEvent.click(screen.getByRole("button", { name: "Logout" }));
+
+        await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("none"));
+        expect(screen.getByTestId("user-email")).toHaveTextContent("none");
+        expect(getAccessToken()).toBeNull();
+        expect(mockNavigate).toHaveBeenCalledWith("/login");
+    });
+
+    it("responds to shared session invalidation by clearing auth state and redirecting", async () => {
+        vi.mocked(fetchUserProfile).mockResolvedValue({
+            id: "user-1",
+            full_name: "Test User",
+            email: "user@example.com",
+            is_admin: false,
+            is_active: true,
+        });
+        localStorage.setItem("token", "persisted-token");
+
+        renderProvider();
+
+        await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("persisted-token"));
+
+        notifySessionInvalidated("refresh_failed");
 
         await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("none"));
         expect(screen.getByTestId("user-email")).toHaveTextContent("none");

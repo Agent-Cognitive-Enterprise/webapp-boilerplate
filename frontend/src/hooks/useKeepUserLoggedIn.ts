@@ -1,6 +1,7 @@
 // /frontend/src/hooks/useKeepUserLoggedIn.ts
 
 import {useEffect, useContext} from "react";
+import { notifySessionInvalidated } from "../auth/sessionEvents.ts";
 import {AuthContext} from "../contexts/AuthContext.tsx";
 import {getUserSettings} from "../api/userSettings.ts";
 import api from "../api/api.ts";
@@ -25,9 +26,7 @@ export function useKeepUserLoggedIn(route = "/profile", intervalMs = 120_000) {
                     const res = await api.post("/auth/refresh");
                     auth.setToken(res.data.access_token); // <-- update your AuthContext token
                 } catch {
-                    // Refresh failed, log out
-                    console.log("Refresh failed, logging out");
-                    auth.logout();
+                    notifySessionInvalidated("refresh_failed");
                 }
             }
         }, intervalMs);

@@ -3,6 +3,7 @@
 import {createContext, useState, useEffect} from 'react';
 import type {ReactNode} from 'react';
 import {useNavigate} from 'react-router-dom';
+import { subscribeToSessionInvalidation } from '../auth/sessionEvents.ts';
 import { clearAccessToken, getAccessToken, setAccessToken } from '../auth/tokenStore.ts';
 import {loginUser, fetchUserProfile, registerUser, logoutUser} from '../api/auth.ts';
 
@@ -58,6 +59,13 @@ const AuthProvider = ({children}: AuthProviderProps) => {
             setUser(null);
         }
     }, [navigate, token]);
+
+    useEffect(() => {
+        return subscribeToSessionInvalidation(() => {
+            clearAuthState();
+            navigate('/login');
+        });
+    }, [navigate]);
 
     const login = async (username: string, password: string) => {
         try {

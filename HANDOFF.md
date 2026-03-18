@@ -1,7 +1,7 @@
 # HANDOFF
 
 ## Current objective
-Continue improving project structure and workflow discipline, with the next focus on further decoupling frontend auth/session behavior and reducing remaining coupling around refresh/logout flows.
+Continue improving project structure and workflow discipline, with the next focus on reducing remaining auth/session coupling and tightening frontend test/runtime ergonomics.
 
 ## Completed in this session
 - Added repository rules to `AGENTS.md` for code shape, test performance, delivery flow, and session handoff discipline.
@@ -13,12 +13,15 @@ Continue improving project structure and workflow discipline, with the next focu
 - Centralized frontend access-token persistence in `frontend/src/auth/tokenStore.ts`.
 - Refactored `AuthContext` to clear client auth state in `finally` during logout and removed local-storage side effects from `api/auth.ts`.
 - Added `frontend/src/contexts/AuthContext.test.tsx` to cover login persistence and logout resilience when backend logout fails.
+- Added a shared session invalidation mechanism in `frontend/src/auth/sessionEvents.ts`.
+- Refactored the Axios interceptor and keep-alive hook to use shared session invalidation instead of direct `window.location.href` mutation or forced logout requests after refresh failure.
+- Added `frontend/src/api/api.test.ts` and expanded `AuthContext` tests to cover the shared session invalidation flow.
 
 ## Current status
-Backend startup no longer runs `create_all()` or ad hoc `ALTER TABLE` logic. `frontend/src/App.tsx` is now a small coordinator, and frontend token persistence now goes through a shared token store used by both `AuthContext` and the Axios refresh interceptor. Frontend lint and the full frontend test suite passed after the refactors.
+Backend startup no longer runs `create_all()` or ad hoc `ALTER TABLE` logic. `frontend/src/App.tsx` is now a small coordinator, frontend token persistence goes through a shared token store, and session invalidation is coordinated through shared auth events rather than hard redirects inside the interceptor. `AGENTS.md` now requires the full backend suite for meaningful backend changes, the full frontend suite for meaningful frontend changes, and both suites for cross-stack changes before marking work complete.
 
 ## Next step
-Refactor `frontend/src/api/api.ts` refresh-failure handling so session invalidation and redirect behavior are coordinated through a shared auth/session mechanism rather than direct `window.location.href` mutation inside the Axios interceptor.
+Add backend quality gates to CI and local workflow by wiring `ruff` and `mypy` into the backend verification path and documenting the fast/default backend checks.
 
 ## Important files
 - AGENTS.md
@@ -36,10 +39,12 @@ Refactor `frontend/src/api/api.ts` refresh-failure handling so session invalidat
 - frontend/src/api/api.ts
 - frontend/src/api/auth.ts
 - frontend/src/auth/tokenStore.ts
+- frontend/src/auth/sessionEvents.ts
 - frontend/src/contexts/AuthContext.test.tsx
+- frontend/src/api/api.test.ts
 
 ## Notes for next session
-Use `frontend/src/contexts/AuthContext.test.tsx`, `frontend/src/App.test.tsx`, and the existing auth-related component tests as the safety net for the next refactor. The remaining auth coupling is in the interceptor path: refresh failure still clears the token and hard-redirects directly from `api.ts`.
+Use the frontend auth/API tests as the safety net if auth/session work continues. The highest-value repo-level gap now is backend verification drift: `ruff` and `mypy` are installed in backend dev requirements but are not part of CI or the root Make targets. Also follow the new verification default: full affected-stack suites are required before closing a meaningful task.
 
 ## Last updated
-2026-03-18 10:15 UTC
+2026-03-18 10:21 UTC
