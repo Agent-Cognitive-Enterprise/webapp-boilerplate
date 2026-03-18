@@ -223,3 +223,43 @@ def test_admin_email_settings_check_shows_validation_feedback(visual_page):
         page.get_by_text("smtp_host, smtp_port and smtp_from_email are required")
     ).to_be_visible()
     snap("admin_settings_email_check_validation_feedback")
+
+
+def test_mobile_admin_can_open_nav_and_reach_admin_settings(visual_page):
+    reset_uninitialized_state()
+    seed_initialized_state(
+        site_name="E2E Mobile Admin Nav Site",
+        users=[
+            SeedUser(
+                full_name="Mobile Admin",
+                email="mobile-admin@example.com",
+                password="MobileAdminPass123!",
+                is_admin=True,
+            )
+        ],
+    )
+
+    page, snap = visual_page
+
+    page.set_viewport_size({"width": 390, "height": 844})
+    _login(page, "mobile-admin@example.com", "MobileAdminPass123!")
+    expect(page).to_have_url(re.compile(".*/dashboard$"))
+
+    menu_button = page.get_by_role("button", name="Toggle navigation menu")
+    expect(menu_button).to_be_visible()
+    expect(menu_button).to_have_text("Menu")
+    menu_button.click()
+
+    expect(menu_button).to_have_text("Close")
+    mobile_nav = page.locator("nav ul.md\\:hidden")
+    expect(mobile_nav.locator('a[href="/dashboard"]')).to_be_visible()
+    expect(mobile_nav.locator('a[href="/profile"]')).to_be_visible()
+    expect(mobile_nav.locator('a[href="/users"]')).to_be_visible()
+    expect(mobile_nav.locator('a[href="/admin/settings"]')).to_be_visible()
+    snap("mobile_admin_nav_open")
+
+    mobile_nav.locator('a[href="/admin/settings"]').click()
+    expect(page).to_have_url(re.compile(".*/admin/settings$"))
+    expect(page.get_by_text("Admin settings")).to_be_visible()
+    expect(menu_button).to_have_text("Menu")
+    snap("mobile_admin_settings_from_nav")

@@ -1,7 +1,7 @@
 # HANDOFF
 
 ## Current objective
-Keep CI stable while continuing cross-stack browser coverage improvements. The latest completed work added authenticated locale-switching coverage and fixed a second full-suite auth flake caused by leaked backend rate-limit state.
+Keep CI stable while continuing cross-stack browser coverage improvements. The latest completed work added the remaining mobile admin-navigation browser path and kept the full suite green.
 
 ## Completed in this session
 - Fixed the setup post-submit redirect race by removing the duplicate child-side navigation from `frontend/src/components/SetupWizard.tsx` and letting `frontend/src/App.tsx` remain the single redirect source after successful initialization.
@@ -12,12 +12,13 @@ Keep CI stable while continuing cross-stack browser coverage improvements. The l
 - Stabilized the admin-settings setup browser test by removing its dependency on the rate-limited `/auth/token` endpoint and generating a local access token in `frontend/tests/state_helpers.py`.
 - Added authenticated locale-switching coverage in `frontend/tests/test_auth_and_admin_e2e.py` for changing the profile page locale to Arabic and asserting RTL document state after reload.
 - Fixed browser-suite rate-limit leakage by clearing backend auth `_RATE_BUCKETS` in `frontend/tests/state_helpers.py` during test resets.
+- Added mobile admin-navigation coverage in `frontend/tests/test_auth_and_admin_e2e.py` by opening the authenticated mobile menu, asserting admin routes are present, and reaching `/admin/settings` through the menu itself.
 
 ## Current status
-Frontend browser coverage now includes setup, auth/login/logout, admin locale propagation, authenticated locale switching to RTL, admin email-settings validation feedback, password reset, email verification, admin user management, duplicate registration feedback, invalid verify-email token feedback, and invalid reset-password token feedback. The setup browser flow is back to reliably landing on `/login` immediately after initialization, the full frontend verification set is green, and the Scorecard workflow now has the OIDC permissions needed for non-interactive Sigstore signing.
+Frontend browser coverage now includes setup, auth/login/logout, admin locale propagation, authenticated locale switching to RTL, mobile admin navigation, admin email-settings validation feedback, password reset, email verification, admin user management, duplicate registration feedback, invalid verify-email token feedback, and invalid reset-password token feedback. The setup browser flow is back to reliably landing on `/login` immediately after initialization, the full frontend verification set is green, and the Scorecard workflow now has the OIDC permissions needed for non-interactive Sigstore signing.
 
 ## Next step
-Confirm the Scorecard workflow passes on the next GitHub Actions run, then return to the remaining low-coverage UI edge cases, most likely mobile-specific admin interactions.
+Confirm the Scorecard workflow passes on the next GitHub Actions run, then decide whether any worthwhile browser gaps remain or shift effort to backend/CI cleanup.
 
 ## Important files
 - AGENTS.md
@@ -34,7 +35,7 @@ Confirm the Scorecard workflow passes on the next GitHub Actions run, then retur
 - frontend/tests/test_password_reset_and_verification_e2e.py
 
 ## Notes for next session
-Keep setup redirect ownership in one place. The regression resurfaced while `SetupWizard.tsx` and `App.tsx` were both trying to navigate after setup; removing the child `navigate("/login")` restored deterministic browser behavior. Separately, the Scorecard failure was a workflow-permissions issue, not an app issue: Sigstore was falling back to device flow and expiring because the job lacked `id-token: write`. The admin-settings browser coverage now includes the deterministic email-settings validation error path, and authenticated profile locale switching is now covered for RTL behavior. For browser-test stability, keep clearing backend auth `_RATE_BUCKETS` in `reset_uninitialized_state()`; without that, `/auth/token` rate limiting leaks across tests and causes suite-only failures. The browser suite still leans on deterministic monkeypatches for reset/verification token generation and email sending, plus stable DOM hooks like `name`, `aria-label`, row filters, and direct form-button locators where `UiLabel`-driven text proved unreliable for Playwright.
+Keep setup redirect ownership in one place. The regression resurfaced while `SetupWizard.tsx` and `App.tsx` were both trying to navigate after setup; removing the child `navigate("/login")` restored deterministic browser behavior. Separately, the Scorecard failure was a workflow-permissions issue, not an app issue: Sigstore was falling back to device flow and expiring because the job lacked `id-token: write`. The admin-settings browser coverage now includes the deterministic email-settings validation error path, authenticated profile locale switching is covered for RTL behavior, and the mobile admin menu path is covered through route-based `href` locators. For browser-test stability, keep clearing backend auth `_RATE_BUCKETS` in `reset_uninitialized_state()`; without that, `/auth/token` rate limiting leaks across tests and causes suite-only failures. The browser suite still leans on deterministic monkeypatches for reset/verification token generation and email sending, plus stable DOM hooks like `name`, `aria-label`, row filters, and direct form-button locators where `UiLabel`-driven text proved unreliable for Playwright.
 
 ## Last updated
-2026-03-18 23:46 UTC
+2026-03-18 23:58 UTC
