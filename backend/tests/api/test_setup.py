@@ -18,9 +18,10 @@ from models.ui_locale import UiLocale
 from models.user import User
 from services import bootstrap
 from services.bootstrap import get_system_settings
+from tests.test_env import TEST_INITIAL_SETUP_TOKEN
 from utils.db import get_session
 
-SETUP_TOKEN = "test-initial-setup-token"
+SETUP_TOKEN = TEST_INITIAL_SETUP_TOKEN
 
 
 @pytest_asyncio.fixture

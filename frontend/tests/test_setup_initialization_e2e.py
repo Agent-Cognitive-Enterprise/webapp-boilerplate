@@ -5,6 +5,7 @@ import re
 
 import pytest
 from playwright.sync_api import expect
+from backend.tests.test_env import TEST_INITIAL_SETUP_TOKEN
 
 from frontend.tests.conftest import FAST_API_BASE_URL, FRONTEND_BASE_URL
 from frontend.tests.state_helpers import (
@@ -17,7 +18,7 @@ from frontend.tests.state_helpers import (
 )
 
 
-SETUP_TOKEN = os.environ.get("INITIAL_SETUP_TOKEN", "test-initial-setup-token")
+SETUP_TOKEN = os.environ.get("INITIAL_SETUP_TOKEN", TEST_INITIAL_SETUP_TOKEN)
 
 
 def _login(page, email: str, password: str) -> None:

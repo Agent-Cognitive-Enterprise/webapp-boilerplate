@@ -3,13 +3,15 @@
 import os
 from datetime import datetime, timezone
 
+from tests.test_env import TEST_AUTH_SECRET_KEY, TEST_INITIAL_SETUP_TOKEN
+
 # Set environment variables for testing
 os.environ.setdefault("DB_TYPE", "sqlite")
 os.environ.setdefault("SQLITE_DB_PATH", ":memory:")
-os.environ.setdefault("AUTH_SECRET_KEY", "test-secret-key-for-testing-only")
+os.environ.setdefault("AUTH_SECRET_KEY", TEST_AUTH_SECRET_KEY)
 os.environ.setdefault("AUTH_RATE_LIMIT_ENABLED", "false")
 # Force deterministic setup auth in tests even when CI defines a different token.
-os.environ["INITIAL_SETUP_TOKEN"] = "test-initial-setup-token"
+os.environ["INITIAL_SETUP_TOKEN"] = TEST_INITIAL_SETUP_TOKEN
 
 
 import pytest

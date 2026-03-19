@@ -1,7 +1,8 @@
 import pytest
 from httpx import AsyncClient
+from tests.test_env import TEST_INITIAL_SETUP_TOKEN
 
-SETUP_TOKEN = "test-initial-setup-token"
+SETUP_TOKEN = TEST_INITIAL_SETUP_TOKEN
 
 
 async def initialize_application(client: AsyncClient) -> None:

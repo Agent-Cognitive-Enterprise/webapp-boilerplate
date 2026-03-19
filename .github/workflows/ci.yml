@@ -13,8 +13,6 @@ jobs:
       run:
         working-directory: backend
     env:
-      AUTH_SECRET_KEY: ci-test-secret-key
-      INITIAL_SETUP_TOKEN: ci-test-setup-token
       APP_ENV: test
       DB_TYPE: sqlite
       SQLITE_DB_PATH: test_ci.db
@@ -75,8 +73,6 @@ jobs:
       run:
         working-directory: backend
     env:
-      AUTH_SECRET_KEY: ci-test-secret-key
-      INITIAL_SETUP_TOKEN: ci-test-setup-token
       APP_ENV: test
       DB_TYPE: sqlite
     steps:

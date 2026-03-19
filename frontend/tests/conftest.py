@@ -17,6 +17,7 @@ import threading
 import time
 import uvicorn
 from playwright.sync_api import sync_playwright
+from backend.tests.test_env import TEST_AUTH_SECRET_KEY, TEST_INITIAL_SETUP_TOKEN
 
 # NOTE: These environment variables must be set before importing any application code
 os.environ.setdefault("DB_TYPE", "sqlite")
@@ -36,10 +37,8 @@ FRONTEND_PORT = _find_free_port()
 FAST_API_BASE_URL = f"http://localhost:{FAST_API_PORT}"
 FRONTEND_BASE_URL = f"http://localhost:{FRONTEND_PORT}"
 os.environ.setdefault("SQLITE_DB_PATH", SQLITE_E2E_DB_PATH)
-os.environ.setdefault(
-    "AUTH_SECRET_KEY", "test-secret-key-for-e2e-tests-only-not-for-production-use"
-)
-os.environ.setdefault("INITIAL_SETUP_TOKEN", "test-initial-setup-token")
+os.environ.setdefault("AUTH_SECRET_KEY", TEST_AUTH_SECRET_KEY)
+os.environ.setdefault("INITIAL_SETUP_TOKEN", TEST_INITIAL_SETUP_TOKEN)
 os.environ.setdefault("CORS_ALLOW_ORIGINS", FRONTEND_BASE_URL)
 os.environ.setdefault("AUTH_FRONTEND_BASE_URL", FRONTEND_BASE_URL)
 os.environ.setdefault("AUTH_BACKEND_BASE_URL", FAST_API_BASE_URL)
