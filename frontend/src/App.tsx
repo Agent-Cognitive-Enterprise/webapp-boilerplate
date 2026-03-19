@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import InitializedAppShell from "./components/InitializedAppShell.tsx";
 import { useBackendHealth } from "./hooks/useBackendHealth.ts";
@@ -47,6 +47,7 @@ function BackendOfflineOverlay({
 }
 
 export default function App() {
+    const navigate = useNavigate();
     const location = useLocation();
     const [shouldRedirectToLoginAfterSetup, setShouldRedirectToLoginAfterSetup] = useState(
         () => readPostSetupRedirectFlag(),
@@ -67,14 +68,22 @@ export default function App() {
             description={setupCopy.backendOfflineDescription}
         />
     ) : null;
+    const shouldRedirectFromSetup = shouldRedirectToLoginAfterSetup || readPostSetupRedirectFlag();
 
     useEffect(() => {
-        if (location.pathname === "/setup" || !shouldRedirectToLoginAfterSetup) {
+        if (location.pathname === "/setup" || !shouldRedirectFromSetup) {
             return;
         }
         clearPostSetupRedirectFlag();
         setShouldRedirectToLoginAfterSetup(false);
-    }, [location.pathname, shouldRedirectToLoginAfterSetup]);
+    }, [location.pathname, shouldRedirectFromSetup]);
+
+    useEffect(() => {
+        if (!isInitialized || location.pathname !== "/setup" || !shouldRedirectFromSetup) {
+            return;
+        }
+        navigate("/login", { replace: true });
+    }, [isInitialized, location.pathname, navigate, shouldRedirectFromSetup]);
 
     if (setupLoading) {
         return (
@@ -113,8 +122,8 @@ export default function App() {
     }
 
     if (isInitialized && location.pathname === "/setup") {
-        if (shouldRedirectToLoginAfterSetup) {
-            return <Navigate to="/login" replace />;
+        if (shouldRedirectFromSetup) {
+            return <div className="min-h-[40vh]" />;
         }
         return (
             <Suspense fallback={<div className="min-h-[40vh]" />}>
