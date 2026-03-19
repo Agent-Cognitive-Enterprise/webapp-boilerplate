@@ -1,5 +1,13 @@
 # Backend Test Suites
 
+## Shared test env defaults
+
+Auth/setup test defaults live in `backend/tests/test_env.py`.
+
+- Use those constants for test auth/setup values instead of hardcoding duplicate secrets or setup tokens in individual tests.
+- Do not duplicate `AUTH_SECRET_KEY` or `INITIAL_SETUP_TOKEN` in CI test-job `env` blocks.
+- `.github/workflows/ci.yml` is guarded by `backend/scripts/check_ci_test_env.py` to enforce that rule.
+
 - `tests/utils`, `tests/auth`, `tests/services`: focused unit-level tests.
 - `tests/api`: endpoint-focused API/integration tests (single-endpoint behavior, validation, contract checks).
 - `tests/e2e`: end-to-end backend flows across multiple endpoints and state transitions.
@@ -18,6 +26,12 @@ Run backend e2e tests:
 
 ```bash
 PYTHONPATH=. .venv/bin/pytest tests/e2e -q
+```
+
+Run the CI test-env drift guard locally:
+
+```bash
+python scripts/check_ci_test_env.py
 ```
 
 Run i18n audit:

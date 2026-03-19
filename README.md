@@ -164,6 +164,9 @@ source .venv/bin/activate
 # run all backend tests
 PYTHONPATH=. pytest -q
 
+# check CI test-env drift
+python scripts/check_ci_test_env.py
+
 # run backend lint
 .venv/bin/ruff check .
 
@@ -192,6 +195,8 @@ The backend `mypy` gate is currently scoped to the typed backend verification pa
 - `auth/cookies.py`
 - `scripts/check_email_config.py`
 - `scripts/check_env_email_settings.py`
+
+Test auth/setup defaults used by backend tests and frontend browser tests are centralized in `backend/tests/test_env.py`. Do not duplicate `AUTH_SECRET_KEY` or `INITIAL_SETUP_TOKEN` in CI test-job `env` blocks; `backend/scripts/check_ci_test_env.py` enforces that rule.
 
 ### Frontend
 
