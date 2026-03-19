@@ -1,5 +1,6 @@
 # /frontend/tests/test_setup_initialization_e2e.py
 
+import os
 import re
 
 import pytest
@@ -16,7 +17,7 @@ from frontend.tests.state_helpers import (
 )
 
 
-SETUP_TOKEN = "test-initial-setup-token"
+SETUP_TOKEN = os.environ.get("INITIAL_SETUP_TOKEN", "test-initial-setup-token")
 
 
 def _login(page, email: str, password: str) -> None:
