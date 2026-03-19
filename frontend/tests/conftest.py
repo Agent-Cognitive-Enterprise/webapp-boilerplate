@@ -81,6 +81,7 @@ def start_fastapi_server():
         host="0.0.0.0",
         port=FAST_API_PORT,
         log_level="error",
+        ws="websockets-sansio",
     )
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, daemon=True)
