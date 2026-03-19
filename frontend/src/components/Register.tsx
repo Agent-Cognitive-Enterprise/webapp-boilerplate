@@ -1,45 +1,17 @@
-// frontend/src/components/Register.tsx
-
-import React, {useState, useContext} from 'react';
-import {AuthContext} from '../contexts/AuthContext.tsx';
 import LocaleSelector from "./UiLocaleSelector.tsx";
 import UiLabel from "./UiLabel.tsx";
-import {useT} from "../hooks/useT.ts";
-
-interface AuthContextType {
-    register: (full_name: string, email: string, password: string) => Promise<void>;
-}
+import {useRegisterForm} from "./register/useRegisterForm.ts";
 
 const Register = () => {
-    const [formData, setFormData] = useState({
-        full_name: '',
-        email: '',
-        password: ''
-    });
-    const [error, setError] = useState<string | null>(null);
-
-    const {register} = useContext(AuthContext) as AuthContextType;
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (error) {
-            setError(null);
-        }
-        setFormData({...formData, [e.target.name]: e.target.value});
-    };
-
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setError(null);
-        try {
-            await register(formData.full_name, formData.email, formData.password);
-        } catch (err: any) {
-            setError(err?.message || "Registration failed. Please try again.");
-        }
-    };
-
-    const placeholderEnterYourFullName = useT("register.placeholder.enter_your_full_name");
-    const placeholderEnterYourEmail = useT("register.placeholder.enter_your_email");
-    const placeholderEnterYourPassword = useT("register.placeholder.enter_your_password");
+    const {
+        formData,
+        error,
+        handleChange,
+        handleSubmit,
+        placeholderEnterYourFullName,
+        placeholderEnterYourEmail,
+        placeholderEnterYourPassword,
+    } = useRegisterForm();
 
     return (
         <div className="ace-page-shell flex items-center justify-center">
