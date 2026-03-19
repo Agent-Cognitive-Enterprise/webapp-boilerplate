@@ -1,48 +1,17 @@
-// frontend/src/components/Login.tsx
-
-import React, {useState, useContext} from 'react';
-import {AuthContext} from '../contexts/AuthContext.tsx';
 import UiLabel from "./UiLabel.tsx";
 import LocaleSelector from "./UiLocaleSelector.tsx";
-import {useT} from "../hooks/useT.ts";
-
-interface AuthContextType {
-    login: (username: string, password: string) => Promise<void>;
-}
+import {useLoginForm} from "./login/useLoginForm.ts";
 
 const Login = () => {
-    const [formData, setFormData] = useState({email: '', password: ''});
-    const [error, setError] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const {login} = useContext(AuthContext) as AuthContextType;
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({...formData, [e.target.name]: e.target.value});
-        // Clear error when user starts typing in credentials
-        if (error) {
-            setError(null);
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setError(null);
-        setIsLoading(true);
-
-        try {
-            await login(formData.email, formData.password);
-            // If we reach here, login succeeded and navigation will happen
-        } catch (err: any) {
-            console.error('Login error:', err);
-            const errorMessage = err.message || 'Login failed. Please check your credentials.';
-            setError(errorMessage);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const placeholderEnterYourEmail = useT("login.placeholder.enter_your_email");
-    const placeholderEnterYourPassword = useT("login.placeholder.enter_your_password");
+    const {
+        formData,
+        error,
+        isLoading,
+        handleChange,
+        handleSubmit,
+        placeholderEnterYourEmail,
+        placeholderEnterYourPassword,
+    } = useLoginForm();
 
     return (
         <div className="ace-page-shell flex items-center justify-center">
