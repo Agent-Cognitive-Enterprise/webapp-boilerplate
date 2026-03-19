@@ -32,6 +32,11 @@ let errorSubs: Array<(err: unknown) => void> = [];
 // Track backend connectivity state
 let backendDown = false;
 
+function shouldReloadAfterBackendRestore(method: string | undefined): boolean {
+    const normalized = (method || "get").toLowerCase();
+    return normalized === "get" || normalized === "head" || normalized === "options";
+}
+
 function subscribeTokenRefresh(onSuccess: (token: string) => void, onError: (err: unknown) => void) {
     successSubs.push(onSuccess);
     errorSubs.push(onError);
@@ -82,14 +87,16 @@ api.interceptors.response.use(
         // If backend was down and we just received a successful response, reload once
         if (backendDown) {
             backendDown = false;
-            try {
-                sessionStorage.setItem("reloadedAfterBackendRestore", "1");
-            } catch {
-                // ignore
-            }
-            // Full reload to reinitialize app state after outage
-            if (typeof window !== "undefined") {
-                window.location.reload();
+            if (shouldReloadAfterBackendRestore(res.config.method)) {
+                try {
+                    sessionStorage.setItem("reloadedAfterBackendRestore", "1");
+                } catch {
+                    // ignore
+                }
+                // Full reload to reinitialize app state after outage
+                if (typeof window !== "undefined") {
+                    window.location.reload();
+                }
             }
         }
         return res;
