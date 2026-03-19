@@ -1,60 +1,21 @@
-// frontend/src/components/ResetPassword.tsx
-
-import React, {useState} from 'react';
-import {Link, useSearchParams, useNavigate} from 'react-router-dom';
-import api from '../api/api';
+import {Link, useSearchParams} from 'react-router-dom';
 import UiLabel from './UiLabel.tsx';
-import {useT} from '../hooks/useT.ts';
+import {useResetPasswordForm} from "./resetPassword/useResetPasswordForm.ts";
 
 const ResetPassword = () => {
     const [searchParams] = useSearchParams();
-    const navigate = useNavigate();
     const token = searchParams.get('token');
-
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    const placeholderPassword = useT("reset_password.placeholder.new_password");
-    const placeholderConfirmPassword = useT("reset_password.placeholder.confirm_password");
-
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setError(null);
-
-        if (password !== confirmPassword) {
-            setError('Passwords do not match');
-            return;
-        }
-
-        if (!token) {
-            setError('Invalid reset token');
-            return;
-        }
-
-        setIsLoading(true);
-
-        try {
-            await api.post('/auth/reset-password', {
-                token,
-                new_password: password,
-            });
-            // Redirect to login with success message
-            navigate('/login?reset=success');
-        } catch (err: any) {
-            const detail = err.response?.data?.detail;
-            if (typeof detail === 'object' && detail.message) {
-                // Password validation errors
-                const errors = detail.errors || [];
-                setError(`${detail.message}: ${errors.join(', ')}`);
-            } else {
-                setError(detail || 'Failed to reset password. Please try again.');
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const {
+        password,
+        setPassword,
+        confirmPassword,
+        setConfirmPassword,
+        isLoading,
+        error,
+        handleSubmit,
+        placeholderPassword,
+        placeholderConfirmPassword,
+    } = useResetPasswordForm({token});
 
     if (!token) {
         return (
