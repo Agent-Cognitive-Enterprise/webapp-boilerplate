@@ -1,5 +1,5 @@
 import {describe, it, expect, vi, beforeEach} from "vitest";
-import {fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {MemoryRouter} from "react-router-dom";
 import SetupWizard from "./SetupWizard";
 import {runSetup} from "../api/setup";
@@ -37,6 +37,7 @@ function renderWizard(
 describe("SetupWizard", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.useRealTimers();
         Object.defineProperty(window.navigator, "language", {
             configurable: true,
             value: "en-US",
@@ -89,6 +90,41 @@ describe("SetupWizard", () => {
             admin_password: "StrongPass123!",
         });
         expect(onSetupComplete).toHaveBeenCalledTimes(1);
+    });
+
+    it("forces a browser redirect when the page is still on /setup after submit", async () => {
+        vi.useFakeTimers();
+        const onSetupComplete = vi.fn();
+        const replaceSpy = vi.fn();
+        vi.mocked(runSetup).mockResolvedValue({data: {}} as any);
+        window.history.replaceState({}, "", "/setup");
+        Object.defineProperty(window, "location", {
+            configurable: true,
+            value: {
+                ...window.location,
+                pathname: "/setup",
+                replace: replaceSpy,
+            },
+        });
+
+        renderWizard(false, onSetupComplete);
+
+        fireEvent.change(screen.getByLabelText("Initial setup token"), {target: {value: "token-123"}});
+        fireEvent.change(screen.getByLabelText("Site name"), {target: {value: "My Site"}});
+        fireEvent.change(screen.getByLabelText("Admin email"), {target: {value: "admin@example.com"}});
+        fireEvent.change(screen.getByLabelText("Admin password"), {target: {value: "StrongPass123!"}});
+        fireEvent.click(screen.getByRole("button", {name: /initial/i}));
+
+        await act(async () => {
+            await Promise.resolve();
+        });
+        expect(runSetup).toHaveBeenCalledTimes(1);
+        await act(async () => {
+            await vi.runAllTimersAsync();
+        });
+
+        expect(onSetupComplete).toHaveBeenCalledTimes(1);
+        expect(replaceSpy).toHaveBeenCalledWith("/login");
     });
 
     it("uses browser locale when supported", () => {

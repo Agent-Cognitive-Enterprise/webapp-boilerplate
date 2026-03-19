@@ -227,6 +227,12 @@ export default function SetupWizard({isInitialized, onSetupComplete, seedLocales
                     : {}),
             });
             onSetupComplete();
+            // If router-driven navigation loses a race after setup, force the browser off /setup.
+            window.setTimeout(() => {
+                if (window.location.pathname === "/setup") {
+                    window.location.replace("/login");
+                }
+            }, 0);
         } catch (err: any) {
             const apiDetail = err?.response?.data?.detail;
             setFormError(typeof apiDetail === "string" ? apiDetail : copy.genericError);
