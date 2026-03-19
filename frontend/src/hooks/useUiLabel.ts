@@ -13,12 +13,14 @@ export function useUiLabel(key: string, locale: string) {
         let cancelled = false;
 
         const unsubscribe = ctx.subscribe(key, locale, (v) => {
-            if (!cancelled) setValue(v);
+            if (!cancelled) {
+                setValue(v);
+            }
         });
 
-        ctx.request(key, locale).then();
-
-        setValue(ctx.getValue(key, locale));
+        ctx.request(key, locale).catch(() => {
+            // provider keeps retry behavior; hook only avoids unhandled promise noise
+        });
 
         return () => {
             cancelled = true;
