@@ -11,7 +11,7 @@ from utils.password import get_password_hash
 from utils.password_reset import generate_reset_token, get_reset_token_expiry
 from crud import password_reset_token as password_reset_crud
 from settings import COOKIE_REFRESH_NAME
-import api.auth as auth_api
+import api.auth_account_recovery as auth_recovery_api
 from settings import AUTH_FRONTEND_BASE_URL
 from models.system_settings import SystemSettings
 
@@ -79,8 +79,8 @@ async def test_forgot_password_sends_email_when_smtp_configured(
         captured["body_text"] = body_text
         captured["from_email"] = config.from_email
 
-    monkeypatch.setattr(auth_api, "generate_reset_token", _deterministic_reset_token)
-    monkeypatch.setattr(auth_api, "send_email", _capture_email)
+    monkeypatch.setattr(auth_recovery_api, "generate_reset_token", _deterministic_reset_token)
+    monkeypatch.setattr(auth_recovery_api, "send_email", _capture_email)
 
     response = await client.post(
         "/auth/forgot-password",
@@ -127,8 +127,8 @@ async def test_forgot_password_uses_db_frontend_base_url_for_reset_link(
     def _capture_email(*, config, to_email: str, subject: str, body_text: str) -> None:
         captured["body_text"] = body_text
 
-    monkeypatch.setattr(auth_api, "generate_reset_token", _deterministic_reset_token)
-    monkeypatch.setattr(auth_api, "send_email", _capture_email)
+    monkeypatch.setattr(auth_recovery_api, "generate_reset_token", _deterministic_reset_token)
+    monkeypatch.setattr(auth_recovery_api, "send_email", _capture_email)
 
     response = await client.post(
         "/auth/forgot-password",
@@ -161,7 +161,7 @@ async def test_forgot_password_does_not_send_for_nonexistent_user_with_smtp_conf
     def _capture_email(*, config, to_email: str, subject: str, body_text: str) -> None:
         sent["called"] = True
 
-    monkeypatch.setattr(auth_api, "send_email", _capture_email)
+    monkeypatch.setattr(auth_recovery_api, "send_email", _capture_email)
 
     response = await client.post(
         "/auth/forgot-password",
@@ -231,7 +231,7 @@ async def test_reset_password_calls_rate_limit_guard(
         called["count"] += 1
         assert action == "reset_password"
 
-    monkeypatch.setattr(auth_api, "_check_rate_limit", fake_check_rate_limit)
+    monkeypatch.setattr(auth_recovery_api, "check_rate_limit", fake_check_rate_limit)
 
     response = await client.post(
         "/auth/reset-password",

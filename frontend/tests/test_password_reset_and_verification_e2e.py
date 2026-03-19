@@ -2,6 +2,7 @@ import hashlib
 import re
 
 import api.auth as auth_api
+import api.auth_account_recovery as auth_recovery_api
 from playwright.sync_api import expect
 
 from frontend.tests.conftest import FAST_API_BASE_URL, FRONTEND_BASE_URL
@@ -34,7 +35,7 @@ def test_forgot_password_and_reset_journey(visual_page, monkeypatch):
 
     plain_reset_token = "browser-reset-token"
     monkeypatch.setattr(
-        auth_api,
+        auth_recovery_api,
         "generate_reset_token",
         lambda: (
             plain_reset_token,
@@ -93,7 +94,7 @@ def test_email_verification_browser_journey(visual_page, monkeypatch):
     plain_verification_token = "browser-verification-token"
     monkeypatch.setattr(
         auth_api,
-        "_generate_email_verification_token",
+        "generate_email_verification_token",
         lambda: (
             plain_verification_token,
             hashlib.sha256(plain_verification_token.encode()).hexdigest(),

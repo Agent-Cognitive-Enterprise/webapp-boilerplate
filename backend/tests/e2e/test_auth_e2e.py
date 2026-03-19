@@ -3,7 +3,7 @@ import hashlib
 import pytest
 from httpx import AsyncClient
 
-import api.auth as auth_api
+import api.auth_account_recovery as auth_recovery_api
 from settings import COOKIE_REFRESH_NAME
 from tests.e2e.test_setup_e2e import initialize_application
 
@@ -72,7 +72,7 @@ async def test_password_reset_lifecycle_end_to_end(
     def _deterministic_reset_token() -> tuple[str, str]:
         return plain_reset_token, hashlib.sha256(plain_reset_token.encode()).hexdigest()
 
-    monkeypatch.setattr(auth_api, "generate_reset_token", _deterministic_reset_token)
+    monkeypatch.setattr(auth_recovery_api, "generate_reset_token", _deterministic_reset_token)
 
     forgot_response = await e2e_client.post(
         "/auth/forgot-password",

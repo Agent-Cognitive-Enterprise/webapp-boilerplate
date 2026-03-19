@@ -4,6 +4,7 @@ import pytest
 from httpx import AsyncClient
 
 import api.auth as auth_api
+from settings import AUTH_FRONTEND_BASE_URL
 from tests.e2e.test_setup_e2e import initialize_application
 
 
@@ -98,5 +99,5 @@ async def test_verify_email_invalid_token_returns_html_feedback_for_browser(
     assert "text/html" in response.headers["content-type"]
     assert "Invalid or already used verification token" in response.text
     assert 'id="countdown">10<' in response.text
-    assert f'href="{auth_api.AUTH_FRONTEND_BASE_URL}/login"' in response.text
-    assert f"const loginUrl = '{auth_api.AUTH_FRONTEND_BASE_URL}/login';" in response.text
+    assert f'href="{AUTH_FRONTEND_BASE_URL}/login"' in response.text
+    assert f"const loginUrl = '{AUTH_FRONTEND_BASE_URL}/login';" in response.text
