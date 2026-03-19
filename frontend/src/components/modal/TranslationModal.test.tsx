@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TranslationModal } from './TranslationModal';
 import { AuthContext } from '../../contexts/AuthContext';
 import { useUiLabelContext } from '../../contexts/UiLabelProvider';
@@ -70,7 +70,7 @@ describe('TranslationModal', () => {
     expect(screen.getByDisplayValue('Nom Complet')).toBeInTheDocument();
   });
 
-  it('submits suggestion and closes modal', () => {
+  it('submits suggestion and closes modal', async () => {
     const onClose = vi.fn();
     renderModal('token-123', onClose);
 
@@ -79,7 +79,9 @@ describe('TranslationModal', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'button.submit' }));
 
-    expect(suggest).toHaveBeenCalledWith('profile.label.full_name', 'fr', 'Nom modifie');
-    expect(onClose).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(suggest).toHaveBeenCalledWith('profile.label.full_name', 'fr', 'Nom modifie');
+      expect(onClose).toHaveBeenCalled();
+    });
   });
 });

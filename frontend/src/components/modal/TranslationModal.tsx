@@ -1,12 +1,9 @@
 // /frontend/src/components/modal/TranslationModal.tsx
 
-import {useMemo, useEffect, useRef, useState, useContext} from "react";
-import {useUiLabelContext} from "../../contexts/UiLabelProvider.tsx";
-import {AuthContext} from "../../contexts/AuthContext.tsx";
-import {useUiLabel} from "../../hooks/useUiLabel.ts";
 import UiLabel from "../UiLabel.tsx";
 import {createPortal} from "react-dom";
 import {useT} from "../../hooks/useT.ts";
+import {useTranslationModalState} from "./translationModal/useTranslationModalState.ts";
 
 interface Props {
     keyName: string;
@@ -33,42 +30,26 @@ function ModalContent(
         onClose
     }: Props
 ) {
-    const auth = useContext(AuthContext);
-    if (!auth) throw new Error("AuthContext not available");
-    const {token} = auth;
-
-    const ctx = useUiLabelContext();
-
-    // Live values via subscription
-    const {value: enLive} = useUiLabel(keyName, "en");
-    const {value: curLive} = useUiLabel(keyName, locale);
-
-    // Track if the user edited the textarea to avoid clobbering input on updates
-    const userEditedRef = useRef(false);
-    const [text, setText] = useState<string>(currentValue ?? curLive ?? "");
-
-
-    useEffect(() => {
-        if (!userEditedRef.current) {
-            // Initialise/refresh from server/current only if the user hasn't typed
-            if ((text ?? "") === "" && (curLive ?? "") !== "") {
-                setText(curLive!);
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [curLive]);
+    const {
+        token,
+        englishValue: englishLiveValue,
+        keyNameTail,
+        text,
+        setDraftValue,
+        submitSuggestion,
+    } = useTranslationModalState({
+        keyName,
+        locale,
+        currentValue,
+    });
 
     const onSubmit = () => {
-        ctx.suggest(keyName, locale, text).then();
-        onClose();
+        submitSuggestion().then(() => {
+            onClose();
+        });
     };
     const keyText = useT("translation_modal.label.key", undefined, "Key", locale);
     const loadingText = useT("common.loading", undefined, "Loading...", locale);
-
-    const keyNameTail = useMemo(() => {
-        const parts = keyName.split(".");
-        return parts[parts.length - 1];
-    }, [keyName]);
 
     // If no token, do not render the modal
     if (!token) return null;
@@ -107,7 +88,7 @@ function ModalContent(
                     <div className="text-gray-700">
                         <label className="font-semibold">en:</label>
                         <div className="w-full px-4 py-3 border border-gray-300 rounded-md bg-gray-100 text-lg">
-                            {enLive || englishValue || `(${loadingText})`}
+                            {englishLiveValue || englishValue || `(${loadingText})`}
                         </div>
                     </div>
 
@@ -116,8 +97,7 @@ function ModalContent(
                         <textarea
                             value={text}
                             onChange={(e) => {
-                                userEditedRef.current = true;
-                                setText(e.target.value);
+                                setDraftValue(e.target.value);
                             }}
                             className="w-full px-4 py-3 border border-gray-300 rounded-md bg-gray-100
                         focus:ring-blue-500
