@@ -7,6 +7,7 @@ Project-specific product goals, architecture, setup, and roadmap belong in `READ
 
 If a deeper or path-specific `AGENTS.md` is added later, the more specific file should take precedence for files in that subtree. Otherwise, this root file is the default house law.
 
+
 ---
 
 ## 1. Purpose
