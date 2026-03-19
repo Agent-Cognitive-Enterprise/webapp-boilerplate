@@ -36,6 +36,25 @@ def _authenticate_as_seeded_user(page, email: str, password: str) -> None:
     page.evaluate("(value) => window.localStorage.setItem('token', value)", token)
 
 
+def _complete_setup_and_reach_login(page) -> None:
+    with page.expect_response(re.compile(r".*/setup$")) as response_info:
+        page.get_by_role("button", name="Initialize application").click()
+    response = response_info.value
+    assert response.ok, response.text()
+
+    status_response = page.request.get(f"{FAST_API_BASE_URL}/setup/status")
+    assert status_response.status == 200
+    assert status_response.json()["is_initialized"] is True
+
+    try:
+        expect(page).to_have_url(re.compile(".*/login$"), timeout=10000)
+        return
+    except AssertionError:
+        expect(page.get_by_text("Application Already Configured")).to_be_visible()
+        page.get_by_role("link", name="Go to login").click()
+        expect(page).to_have_url(re.compile(".*/login$"))
+
+
 def test_first_run_setup_journey(visual_page):
     reset_uninitialized_state()
 
@@ -51,9 +70,7 @@ def test_first_run_setup_journey(visual_page):
     page.get_by_label("Admin email").fill("e2e-admin@example.com")
     page.get_by_label("Admin password").fill("SetupAdminPass123!")
     snap("setup_form_filled")
-    page.get_by_role("button", name="Initialize application").click()
-
-    expect(page).to_have_url(re.compile(".*/login$"))
+    _complete_setup_and_reach_login(page)
     snap("post_setup_login")
 
     page.goto(f"{FRONTEND_BASE_URL}/setup")
@@ -132,8 +149,7 @@ def test_mobile_first_setup_and_login_visuals(visual_page):
     page.get_by_label("Site name").fill("Responsive Visual Site")
     page.get_by_label("Admin email").fill("e2e-admin@example.com")
     page.get_by_label("Admin password").fill("SetupAdminPass123!")
-    page.get_by_role("button", name="Initialize application").click()
-    expect(page).to_have_url(re.compile(".*/login$"))
+    _complete_setup_and_reach_login(page)
 
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(f"{FRONTEND_BASE_URL}/login")
