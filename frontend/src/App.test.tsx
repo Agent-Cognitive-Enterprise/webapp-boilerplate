@@ -65,6 +65,7 @@ describe('App routing and navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
     vi.mocked(getSetupStatus).mockResolvedValue({ is_initialized: true });
     vi.mocked(fetchPublicBranding).mockResolvedValue({ appName: 'ACE', siteLogo: null, backgroundImage: null });
     vi.stubGlobal(

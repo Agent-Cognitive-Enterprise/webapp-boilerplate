@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import InitializedAppShell from "./components/InitializedAppShell.tsx";
@@ -6,6 +6,28 @@ import { useBackendHealth } from "./hooks/useBackendHealth.ts";
 import { useSetupBootstrap } from "./hooks/useSetupBootstrap.ts";
 
 const SetupWizard = lazy(() => import("./components/SetupWizard.tsx"));
+const POST_SETUP_REDIRECT_KEY = "postSetupRedirectToLogin";
+
+function readPostSetupRedirectFlag(): boolean {
+    if (typeof window === "undefined") {
+        return false;
+    }
+    return window.sessionStorage.getItem(POST_SETUP_REDIRECT_KEY) === "true";
+}
+
+function writePostSetupRedirectFlag(): void {
+    if (typeof window === "undefined") {
+        return;
+    }
+    window.sessionStorage.setItem(POST_SETUP_REDIRECT_KEY, "true");
+}
+
+function clearPostSetupRedirectFlag(): void {
+    if (typeof window === "undefined") {
+        return;
+    }
+    window.sessionStorage.removeItem(POST_SETUP_REDIRECT_KEY);
+}
 
 function BackendOfflineOverlay({
     title,
@@ -26,7 +48,9 @@ function BackendOfflineOverlay({
 
 export default function App() {
     const location = useLocation();
-    const [shouldRedirectToLoginAfterSetup, setShouldRedirectToLoginAfterSetup] = useState(false);
+    const [shouldRedirectToLoginAfterSetup, setShouldRedirectToLoginAfterSetup] = useState(
+        () => readPostSetupRedirectFlag(),
+    );
     const {
         setupLoading,
         isInitialized,
@@ -43,6 +67,14 @@ export default function App() {
             description={setupCopy.backendOfflineDescription}
         />
     ) : null;
+
+    useEffect(() => {
+        if (location.pathname === "/setup" || !shouldRedirectToLoginAfterSetup) {
+            return;
+        }
+        clearPostSetupRedirectFlag();
+        setShouldRedirectToLoginAfterSetup(false);
+    }, [location.pathname, shouldRedirectToLoginAfterSetup]);
 
     if (setupLoading) {
         return (
@@ -63,6 +95,7 @@ export default function App() {
                                 <SetupWizard
                                     isInitialized={false}
                                     onSetupComplete={() => {
+                                        writePostSetupRedirectFlag();
                                         setShouldRedirectToLoginAfterSetup(true);
                                         setIsInitialized(true);
                                     }}
