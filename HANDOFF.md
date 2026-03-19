@@ -1,40 +1,35 @@
 # HANDOFF
 
 ## Current objective
-Keep CI stable while reducing structural risk in high-stakes backend code. The latest completed work split the oversized auth API module into smaller pieces without changing behavior.
+Keep CI stable while reducing structural risk in large handwritten source files. The latest completed work split the oversized frontend admin settings component into smaller pieces without changing behavior.
 
 ## Completed in this session
-- Extracted shared auth helpers and rate-limit/base-URL utilities into `backend/api/auth_shared.py`.
-- Extracted email-verification and password-reset routes into `backend/api/auth_account_recovery.py`, then included that subrouter from `backend/api/auth.py`.
-- Removed the stale logout `TODO` from `backend/api/auth.py`; logout coverage already existed in `backend/tests/api/test_auth.py` and `backend/tests/e2e/test_auth_e2e.py`.
-- Reduced `backend/api/auth.py` from `793` lines to `396` lines, bringing it back under the repository hard limit.
-- Updated auth/password-reset/email-verification tests and browser monkeypatches to patch the extracted recovery module where appropriate.
-- Re-ran focused auth checks with `PYTHONPATH=. .venv/bin/pytest tests/api/test_auth.py tests/api/test_password_reset.py tests/api/test_email_verification.py tests/e2e/test_auth_e2e.py tests/e2e/test_email_verification_e2e.py -q` and lint for the extracted auth modules.
+- Extracted admin-settings utility functions into `frontend/src/components/adminSettings/adminSettingsUtils.ts`.
+- Extracted admin-settings translation wiring into `frontend/src/components/adminSettings/useAdminSettingsText.ts`.
+- Extracted admin-settings state, loading, save, and email-check behavior into `frontend/src/components/adminSettings/useAdminSettingsForm.ts`.
+- Reduced `frontend/src/components/AdminSettings.tsx` from `518` lines to `302` lines, keeping it focused on rendering and event wiring.
+- Re-ran focused frontend checks with `npx vitest run src/components/AdminSettings.test.tsx` and `npx eslint` on the extracted admin-settings files.
 - Re-ran the full backend suite with `PYTHONPATH=. .venv/bin/pytest -q`.
 - Re-ran the full frontend verification path again: `npm test`, `npm run lint`, `npm run build`, and `PYTHONPATH=..:. .venv/bin/pytest ../frontend/tests -q`.
 
 ## Current status
-The auth API surface is behaviorally unchanged but structurally safer: shared helpers are separated, account-recovery routes live in their own module, and `backend/api/auth.py` is back under the hard file-size limit. The full verification state is green: backend `143 passed`, frontend `107` Vitest tests, browser `17 passed`.
+The admin settings UI is behaviorally unchanged but structurally safer: rendering stays in `frontend/src/components/AdminSettings.tsx`, while utility, text, and form/state logic now live in dedicated files under `frontend/src/components/adminSettings/`. The full verification state is green: backend `143 passed`, frontend `107` Vitest tests, browser `17 passed`.
 
 ## Next step
-Next structural cleanup target is `frontend/src/components/AdminSettings.tsx` (`518` lines). It is the next largest handwritten hotspot and mixes too many concerns in one component.
+Next structural cleanup target is `frontend/src/contexts/UiLabelProvider.tsx` (`466` lines). It is the next largest handwritten hotspot and still mixes caching, storage, polling, and network coordination in one file.
 
 ## Important files
 - AGENTS.md
 - HANDOFF.md
-- backend/api/auth.py
-- backend/api/auth_shared.py
-- backend/api/auth_account_recovery.py
-- backend/tests/api/test_auth.py
-- backend/tests/api/test_password_reset.py
-- backend/tests/e2e/test_auth_e2e.py
-- backend/tests/e2e/test_email_verification_e2e.py
-- frontend/tests/conftest.py
-- frontend/tests/test_password_reset_and_verification_e2e.py
-- frontend/tests/test_setup_initialization_e2e.py
+- frontend/src/components/AdminSettings.tsx
+- frontend/src/components/adminSettings/adminSettingsUtils.ts
+- frontend/src/components/adminSettings/useAdminSettingsForm.ts
+- frontend/src/components/adminSettings/useAdminSettingsText.ts
+- frontend/src/components/AdminSettings.test.tsx
+- frontend/tests/test_auth_and_admin_e2e.py
 
 ## Notes for next session
-The auth refactor split along a clean seam: `backend/api/auth.py` now owns register/login/refresh/logout, `backend/api/auth_account_recovery.py` owns verify-email and password-reset flows, and `backend/api/auth_shared.py` holds shared helpers plus the rate-limit bucket state still used by tests. Some tests and Playwright browser specs had been monkeypatching internals on `api.auth`; those were updated to patch the extracted recovery module where the behavior now lives. During local verification, running two Playwright pytest commands in parallel caused a false Alembic/SQLite collision on `frontend_e2e.db`; rerunning the browser suite in isolation passed, so that was a tooling artifact rather than a code regression.
+The admin settings refactor split along a clean seam: `AdminSettings.tsx` now renders the page, `useAdminSettingsForm.ts` owns loading/save/email-check state and handlers, `useAdminSettingsText.ts` owns the `useT` wiring, and `adminSettingsUtils.ts` holds pure helpers/constants. Focused tests stayed green through the split, and the full frontend/backend verification state is green. One local verification pitfall remains unchanged: do not run two Playwright pytest commands in parallel against `frontend/tests/conftest.py`, because they share `frontend_e2e.db` and can collide during Alembic setup.
 
 ## Last updated
-2026-03-19 03:51 UTC
+2026-03-19 03:59 UTC
