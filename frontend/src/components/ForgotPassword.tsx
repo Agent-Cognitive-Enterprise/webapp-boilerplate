@@ -1,35 +1,16 @@
-// frontend/src/components/ForgotPassword.tsx
-
-import React, {useState} from 'react';
 import {Link} from 'react-router-dom';
-import api from '../api/api';
 import UiLabel from './UiLabel.tsx';
+import {useForgotPasswordForm} from "./forgotPassword/useForgotPasswordForm.ts";
 
 const ForgotPassword = () => {
-    const [email, setEmail] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [success, setSuccess] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setError(null);
-        setIsLoading(true);
-
-        try {
-            await api.post('/auth/forgot-password', { email });
-            setSuccess(true);
-        } catch (err: any) {
-            if (err?.response?.status === 404) {
-                // Hide user-enumeration signals if backend leaks "Not Found" for unknown emails.
-                setSuccess(true);
-                return;
-            }
-            setError('Failed to send reset email. Please try again.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const {
+        email,
+        setEmail,
+        isLoading,
+        success,
+        error,
+        handleSubmit,
+    } = useForgotPasswordForm();
 
     if (success) {
         return (
