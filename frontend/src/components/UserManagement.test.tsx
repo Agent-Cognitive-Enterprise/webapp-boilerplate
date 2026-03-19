@@ -130,4 +130,86 @@ describe('UserManagement Component', () => {
       expect(screen.getByRole('button', { name: 'user_management.action.activate' })).toBeInTheDocument();
     });
   });
+
+  it('creates a new user and prepends it to the list', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [] } as any);
+    vi.mocked(api.post).mockResolvedValue({
+      data: {
+        id: 'u2',
+        email: 'newuser@example.com',
+        full_name: 'New User',
+        is_active: true,
+        is_admin: false,
+        email_verified: false,
+        created_at: '2026-01-02T00:00:00Z',
+      },
+    } as any);
+
+    renderUserManagement({
+      token: 'token-123',
+      user: { is_admin: true },
+    });
+
+    await screen.findByText('user_management.message.no_users_found');
+
+    fireEvent.change(screen.getByLabelText('user_management.field.full_name'), {
+      target: { value: 'New User' },
+    });
+    fireEvent.change(screen.getByLabelText('user_management.field.email'), {
+      target: { value: 'newuser@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('user_management.field.password'), {
+      target: { value: 'StrongPass123!' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'user_management.button.create_user' }));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/users',
+        {
+          full_name: 'New User',
+          email: 'newuser@example.com',
+          password: 'StrongPass123!',
+          is_admin: false,
+        },
+        { headers: { Authorization: 'Bearer token-123' } }
+      );
+    });
+
+    expect(screen.getByText('newuser@example.com')).toBeInTheDocument();
+  });
+
+  it('deletes a user and removes the row', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: [
+        {
+          id: 'u1',
+          email: 'user1@example.com',
+          is_active: true,
+          is_admin: false,
+          email_verified: false,
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      ],
+    } as any);
+    vi.mocked(api.delete).mockResolvedValue({ data: {} } as any);
+
+    renderUserManagement({
+      token: 'token-123',
+      user: { is_admin: true },
+    });
+
+    await screen.findByText('user1@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'user_management.action.delete' }));
+
+    await waitFor(() => {
+      expect(api.delete).toHaveBeenCalledWith('/users/u1', {
+        headers: { Authorization: 'Bearer token-123' },
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('user1@example.com')).not.toBeInTheDocument();
+    });
+  });
 });
