@@ -4,6 +4,7 @@ from playwright.sync_api import expect
 
 from frontend.tests.conftest import FRONTEND_BASE_URL
 from frontend.tests.state_helpers import (
+    read_ui_label_suggestion_counts,
     SeedUser,
     reset_uninitialized_state,
     seed_initialized_state,
@@ -193,6 +194,41 @@ def test_profile_locale_selection_persists_across_reload_and_relogin(visual_page
     assert page.evaluate("document.documentElement.lang").startswith("ar")
     assert page.evaluate("document.documentElement.dir") == "rtl"
     snap("dashboard_locale_after_relogin")
+
+
+def test_authenticated_user_can_submit_ui_label_suggestion(visual_page):
+    reset_uninitialized_state()
+    seed_initialized_state(
+        site_name="E2E UiLabel Suggestion Site",
+        users=[
+            SeedUser(
+                full_name="Suggestion User",
+                email="suggestion-user@example.com",
+                password="SuggestPass123!",
+            )
+        ],
+    )
+    seed_ui_locales(["en"])
+
+    page, snap = visual_page
+
+    _login(page, "suggestion-user@example.com", "SuggestPass123!")
+    expect(page).to_have_url(re.compile(".*/dashboard$"))
+
+    page.goto(f"{FRONTEND_BASE_URL}/profile")
+    heading = page.get_by_role("heading", name="User Profile")
+    expect(heading).to_be_visible()
+
+    heading.click(button="right")
+    expect(page.get_by_text("Suggest translation")).to_be_visible()
+    page.locator("textarea").fill("Profile Home")
+    snap("ui_label_suggestion_modal_filled")
+    page.get_by_role("button", name="Submit").click()
+
+    expect(page.get_by_text("Suggest translation")).to_have_count(0)
+    counts = read_ui_label_suggestion_counts("profile.title.user_profile", "en")
+    assert counts.get("Profile Home") == 1
+    snap("ui_label_suggestion_submitted")
 
 
 def test_admin_can_create_deactivate_and_delete_user(visual_page):

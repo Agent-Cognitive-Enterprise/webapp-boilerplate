@@ -6,6 +6,8 @@ from sqlmodel import select
 
 from auth.auth_handler import create_access_token
 from api.auth import _RATE_BUCKETS
+from crud.ui_label import get_by_key_locale
+from crud.ui_label_suggestions import get_label_suggestions
 from frontend.tests.conftest import run_async_safely
 from models.system_settings import SystemSettings
 from models.ui_label import UiLabel
@@ -123,3 +125,21 @@ def read_system_settings() -> SystemSettings | None:
 
 def create_test_access_token(email: str) -> str:
     return create_access_token(data={"sub": email})
+
+
+def read_ui_label_suggestion_counts(key: str, locale: str) -> dict[str, int]:
+    async def _task():
+        async for session in get_session():
+            label = await get_by_key_locale(
+                session=session,
+                key=key,
+                locale=locale,
+            )
+            if label is None:
+                return {}
+            return await get_label_suggestions(
+                session=session,
+                label_id=label.id,
+            )
+
+    return run_async_safely(_task())
