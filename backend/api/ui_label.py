@@ -17,6 +17,8 @@ from api.ui_label_handlers import handle_suggest_action
 from api.ui_label_handlers import locale_is_blank
 from api.ui_label_handlers import locale_required_response
 from api.ui_label_handlers import unknown_action_response
+from api.ui_label_handlers import SuggestActionDependencies
+from api.ui_label_handlers import SuggestActionInput
 from api.ui_label_models import UILabelRequest
 from api.ui_label_models import UILabelResponse
 from auth.auth_handler import get_current_user, oauth2_scheme
@@ -106,12 +108,16 @@ async def ui_label_post(
         return await handle_suggest_action(
             request=request,
             session=session,
-            token=token,
-            locale=locale,
-            key=request_body.key,
-            value=request_body.value,
-            get_current_user=get_current_user,
-            schedule_suggestion_evaluation=schedule_suggestion_evaluation,
+            action_input=SuggestActionInput(
+                token=token,
+                locale=locale,
+                key=request_body.key,
+                value=request_body.value,
+            ),
+            dependencies=SuggestActionDependencies(
+                get_current_user=get_current_user,
+                schedule_suggestion_evaluation=schedule_suggestion_evaluation,
+            ),
         )
 
     return unknown_action_response(request)
