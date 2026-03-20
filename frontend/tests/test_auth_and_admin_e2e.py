@@ -140,6 +140,61 @@ def test_authenticated_user_can_switch_profile_locale_to_rtl(visual_page):
     snap("profile_after_authenticated_locale_switch_rtl")
 
 
+def test_profile_locale_selection_persists_across_reload_and_relogin(visual_page):
+    reset_uninitialized_state()
+    seed_initialized_state(
+        site_name="E2E Locale Persistence Site",
+        supported_locales=["en", "ar"],
+        users=[
+            SeedUser(
+                full_name="Persistent Locale User",
+                email="persistent-locale@example.com",
+                password="LocalePass123!",
+            )
+        ],
+    )
+    seed_ui_locales(["en", "ar"])
+
+    page, snap = visual_page
+
+    _login(page, "persistent-locale@example.com", "LocalePass123!")
+    expect(page).to_have_url(re.compile(".*/dashboard$"))
+
+    page.goto(f"{FRONTEND_BASE_URL}/profile")
+    expect(page).to_have_url(re.compile(".*/profile$"))
+    expect(page.get_by_text("English")).to_be_visible()
+
+    page.get_by_text("English").click()
+    page.get_by_role("button", name=re.compile("العربية")).click()
+    page.get_by_role("button", name=re.compile("save|حفظ", re.IGNORECASE)).click()
+
+    page.wait_for_timeout(800)
+    expect(page.get_by_text("العربية")).to_be_visible()
+    assert page.evaluate("window.localStorage.getItem('uiLocale')") == "ar"
+    snap("profile_locale_after_selection")
+
+    page.reload()
+    expect(page).to_have_url(re.compile(".*/profile$"))
+    expect(page.get_by_text("العربية")).to_be_visible()
+    assert page.evaluate("document.documentElement.lang").startswith("ar")
+    assert page.evaluate("document.documentElement.dir") == "rtl"
+    snap("profile_locale_after_reload")
+
+    page.get_by_test_id("logout-button").click()
+    expect(page).to_have_url(re.compile(".*/login$"))
+    expect(page.get_by_text("العربية")).to_be_visible()
+    snap("login_locale_after_logout")
+
+    page.locator('input[name="email"]').fill("persistent-locale@example.com")
+    page.locator('input[name="password"]').fill("LocalePass123!")
+    page.locator("button[type='submit']").click()
+    expect(page).to_have_url(re.compile(".*/dashboard$"))
+    assert page.evaluate("window.localStorage.getItem('uiLocale')") == "ar"
+    assert page.evaluate("document.documentElement.lang").startswith("ar")
+    assert page.evaluate("document.documentElement.dir") == "rtl"
+    snap("dashboard_locale_after_relogin")
+
+
 def test_admin_can_create_deactivate_and_delete_user(visual_page):
     reset_uninitialized_state()
     seed_initialized_state(
