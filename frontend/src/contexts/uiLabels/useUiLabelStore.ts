@@ -1,5 +1,4 @@
 import {useCallback, useEffect, useMemo, useRef} from "react";
-import api from "../../api/api";
 import {
     loadUiLabelLocaleIntoMemory,
     loadUiLabelLocalCache,
@@ -10,46 +9,16 @@ import {
     UI_LABEL_POLL_INTERVAL_MS,
     UI_LABEL_POLL_MAX_ATTEMPTS,
 } from "./cache";
+import {pollUntilUiLabelAvailable} from "./polling";
+import {notifyUiLabelListeners, subscribeUiLabelListener} from "./subscriptions";
+import {addUiLabelKey, fetchUiLabelLocale, suggestUiLabelValue} from "./uiLabelApi";
 import type {UILabelListener, UiLabelContextType, UiLabelLocalCache} from "./types";
-
-type UiLabelPayload = {
-    data?: {
-        labels?: Record<string, string>;
-        values_hash?: string;
-        valuesHash?: string;
-    };
-    labels?: Record<string, string>;
-    values_hash?: string;
-};
-
-type UiLabelArrayItem = {
-    key: string;
-    value: string;
-};
-
-type UiLabelHashPayload = {
-    values_hash?: string;
-    valuesHash?: string;
-};
 
 export function useUiLabelStore(token: string | null | undefined): UiLabelContextType {
     const cacheRef = useRef<Map<string, string>>(new Map());
     const localCacheRef = useRef<UiLabelLocalCache>(loadUiLabelLocalCache());
     const subsRef = useRef<Map<string, Map<string, Set<UILabelListener>>>>(new Map());
     const fetchingLocaleRef = useRef<Map<string, boolean>>(new Map());
-
-    const notify = useCallback((key: string, locale: string) => {
-        const listeners = subsRef.current.get(locale)?.get(key);
-        const value = cacheRef.current.get(`${key}::${locale}`);
-
-        listeners?.forEach((cb) => {
-            try {
-                cb(value);
-            } catch {
-                // ignore listener errors
-            }
-        });
-    }, []);
 
     const loadLocaleIntoMemory = useCallback((locale: string) => {
         loadUiLabelLocaleIntoMemory(cacheRef.current, localCacheRef.current, locale);
@@ -66,16 +35,25 @@ export function useUiLabelStore(token: string | null | undefined): UiLabelContex
                 localCacheRef.current,
                 locale,
                 labels,
-                notify,
+                (key, targetLocale) => {
+                    notifyUiLabelListeners(subsRef.current, getValue, key, targetLocale);
+                },
                 valuesHash,
             );
         },
-        [notify],
+        [getValue],
     );
 
     const touchLocaleLastCheck = useCallback((locale: string) => {
         touchUiLabelLocaleLastCheck(localCacheRef.current, locale);
     }, []);
+
+    const notify = useCallback(
+        (key: string, locale: string) => {
+            notifyUiLabelListeners(subsRef.current, getValue, key, locale);
+        },
+        [getValue],
+    );
 
     const fetchLocaleIfStale = useCallback(
         async (locale: string) => {
@@ -90,62 +68,18 @@ export function useUiLabelStore(token: string | null | undefined): UiLabelContex
                 const valuesHash = entry?.values_hash;
 
                 try {
-                    const resp = await api.post(
-                        "/ui-label",
-                        {
-                            action: "get",
-                            locale,
-                            values_hash: valuesHash,
-                        },
-                        {
-                            headers: {
-                                "Content-Type": "application/json",
-                                Authorization: "Bearer free",
-                            },
-                        },
-                    );
+                    const result = await fetchUiLabelLocale(locale, valuesHash);
 
-                    const payload = resp?.data as UiLabelPayload | UiLabelArrayItem[] | undefined;
-
-                    if (!payload) {
+                    if (!result) {
                         return;
                     }
 
-                    if (!Array.isArray(payload) && payload.data?.values_hash === valuesHash) {
+                    if (result.kind === "unchanged" || result.kind === "touched") {
                         touchLocaleLastCheck(locale);
                         return;
                     }
 
-                    const data = !Array.isArray(payload) ? payload.data ?? payload : payload;
-
-                    if (
-                        !Array.isArray(data) &&
-                        data.labels &&
-                        typeof data.labels === "object"
-                    ) {
-                        const hashPayload = data as UiLabelHashPayload;
-                        setLocaleCache(
-                            locale,
-                            data.labels,
-                            hashPayload.values_hash ??
-                                hashPayload.valuesHash ??
-                                localCacheRef.current[locale]?.values_hash,
-                        );
-                        return;
-                    }
-
-                    if (Array.isArray(data)) {
-                        const labels = data.reduce<Record<string, string>>((acc, item) => {
-                            acc[item.key] = item.value;
-                            return acc;
-                        }, {});
-                        setLocaleCache(locale, labels, localCacheRef.current[locale]?.values_hash);
-                        return;
-                    }
-
-                    if (!Array.isArray(data) && data.values_hash) {
-                        touchLocaleLastCheck(locale);
-                    }
+                    setLocaleCache(locale, result.labels, result.valuesHash);
                 } catch {
                     // ignore network errors and retry on next request
                 }
@@ -163,48 +97,35 @@ export function useUiLabelStore(token: string | null | undefined): UiLabelContex
             }
 
             try {
-                await api.post(
-                    "/ui-label",
-                    {
-                        action: "add",
-                        locale,
-                        key,
-                    },
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: "Bearer free",
-                        },
-                    },
-                );
+                await addUiLabelKey(locale, key);
             } catch {
                 // ignore add failures and rely on polling
             }
 
-            for (let attempt = 0; attempt < UI_LABEL_POLL_MAX_ATTEMPTS; attempt++) {
-                await new Promise((resolve) => setTimeout(resolve, UI_LABEL_POLL_INTERVAL_MS));
-                await fetchLocaleIfStale(locale);
-
-                if (getValue(key, locale) !== undefined) {
-                    notify(key, locale);
-                    return;
-                }
-            }
+            await pollUntilUiLabelAvailable({
+                key,
+                locale,
+                maxAttempts: UI_LABEL_POLL_MAX_ATTEMPTS,
+                intervalMs: UI_LABEL_POLL_INTERVAL_MS,
+                fetchLocaleIfStale,
+                getValue,
+                notify,
+            });
         },
         [fetchLocaleIfStale, getValue, notify],
     );
 
     const pollAfterSuggest = useCallback(
         async (key: string, locale: string) => {
-            for (let attempt = 0; attempt < UI_LABEL_POLL_MAX_ATTEMPTS; attempt++) {
-                await new Promise((resolve) => setTimeout(resolve, UI_LABEL_POLL_INTERVAL_MS));
-                await fetchLocaleIfStale(locale);
-
-                if (getValue(key, locale) !== undefined) {
-                    notify(key, locale);
-                    return;
-                }
-            }
+            await pollUntilUiLabelAvailable({
+                key,
+                locale,
+                maxAttempts: UI_LABEL_POLL_MAX_ATTEMPTS,
+                intervalMs: UI_LABEL_POLL_INTERVAL_MS,
+                fetchLocaleIfStale,
+                getValue,
+                notify,
+            });
         },
         [fetchLocaleIfStale, getValue, notify],
     );
@@ -237,25 +158,7 @@ export function useUiLabelStore(token: string | null | undefined): UiLabelContex
 
     const suggest = useCallback(
         async (key: string, locale: string, value: string) => {
-            if (!token) {
-                throw new Error("Unauthorized");
-            }
-
-            await api.post(
-                "/ui-label",
-                {
-                    action: "suggest",
-                    key,
-                    locale,
-                    value,
-                },
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                },
-            );
+            await suggestUiLabelValue(token, key, locale, value);
 
             pollAfterSuggest(key, locale).catch(() => {
                 // ignore background polling failures
@@ -266,17 +169,7 @@ export function useUiLabelStore(token: string | null | undefined): UiLabelContex
 
     const subscribe = useCallback(
         (key: string, locale: string, cb: UILabelListener) => {
-            if (!subsRef.current.has(locale)) {
-                subsRef.current.set(locale, new Map());
-            }
-
-            const byKey = subsRef.current.get(locale)!;
-
-            if (!byKey.has(key)) {
-                byKey.set(key, new Set());
-            }
-
-            byKey.get(key)!.add(cb);
+            const unsubscribe = subscribeUiLabelListener(subsRef.current, key, locale, cb);
             loadLocaleIntoMemory(locale);
 
             try {
@@ -295,19 +188,7 @@ export function useUiLabelStore(token: string | null | undefined): UiLabelContex
                 });
             }
 
-            return () => {
-                const listeners = subsRef.current.get(locale)?.get(key);
-
-                if (!listeners) {
-                    return;
-                }
-
-                listeners.delete(cb);
-
-                if (listeners.size === 0) {
-                    subsRef.current.get(locale)?.delete(key);
-                }
-            };
+            return unsubscribe;
         },
         [ensureKeyExists, getValue, loadLocaleIntoMemory, request],
     );
