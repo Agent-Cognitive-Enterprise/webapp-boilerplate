@@ -509,4 +509,51 @@ describe("AdminSettings", () => {
             await screen.findByText("smtp_host, smtp_port and smtp_from_email are required")
         ).toBeInTheDocument();
     });
+
+    it("submits edited email settings fields when checking configuration", async () => {
+        vi.mocked(getAdminSettings).mockResolvedValue({
+            site_name: "ACE Site",
+            default_locale: "en",
+            supported_locales: ["en"],
+            site_logo: null,
+            background_image: null,
+            openai_api_key_masked: null,
+            deepseek_api_key_masked: null,
+            admin_email: "admin@example.com",
+            smtp_host: null,
+            smtp_port: null,
+            smtp_username: null,
+            smtp_password_masked: null,
+            smtp_from_email: null,
+            smtp_use_tls: true,
+            auth_frontend_base_url: null,
+            auth_backend_base_url: null,
+            email_configured: false,
+        });
+        vi.mocked(checkAdminEmailSettings).mockResolvedValue({
+            valid: true,
+            message: "Email settings look good",
+        });
+
+        renderAdminSettings(true);
+        await waitFor(() => expect(getAdminSettings).toHaveBeenCalledTimes(1));
+
+        fireEvent.change(await screen.findByLabelText("SMTP host"), {target: {value: "smtp.example.com"}});
+        fireEvent.change(screen.getByLabelText("SMTP port"), {target: {value: "587"}});
+        fireEvent.change(screen.getByLabelText("SMTP username"), {target: {value: "mailer"}});
+        fireEvent.change(screen.getByLabelText("SMTP from email"), {target: {value: "no-reply@example.com"}});
+        fireEvent.click(screen.getByLabelText("Use STARTTLS"));
+        fireEvent.click(screen.getByRole("button", {name: "Check email settings"}));
+
+        await waitFor(() => expect(checkAdminEmailSettings).toHaveBeenCalledTimes(1));
+        expect(vi.mocked(checkAdminEmailSettings).mock.calls[0][0]).toEqual({
+            smtp_host: "smtp.example.com",
+            smtp_port: 587,
+            smtp_username: "mailer",
+            smtp_password: undefined,
+            smtp_from_email: "no-reply@example.com",
+            smtp_use_tls: false,
+        });
+        expect(await screen.findByText("Email settings look good")).toBeInTheDocument();
+    });
 });

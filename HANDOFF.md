@@ -1,34 +1,34 @@
 # HANDOFF
 
 ## Current objective
-Keep CI stable while reducing structural risk in large handwritten source files. The latest completed work split the initialized app shell into dedicated shell-state and navigation modules without changing behavior.
+Keep CI stable while reducing structural risk in large handwritten source files. The latest completed work split the admin settings page into smaller render-only section modules without changing behavior.
 
 ## Completed in this session
-- Added `frontend/src/components/appShell/useInitializedAppShellState.ts` to own branding loading/caching, mobile viewport detection, and mobile-nav open state.
-- Added `frontend/src/components/appShell/AppShellNav.tsx` to render the shared desktop/mobile navigation UI.
-- Added direct shell coverage in `frontend/src/components/InitializedAppShell.test.tsx` for the mobile guest-nav toggle path.
-- Reduced `frontend/src/components/InitializedAppShell.tsx` from `221` lines to `78` lines while keeping the route table and shell layout intact.
-- Re-ran focused frontend checks with `npx vitest run src/components/InitializedAppShell.test.tsx src/App.test.tsx` and `npx eslint` on the touched shell files.
-- Re-ran the full frontend verification path again: `npm test`, `npm run lint`, `npm run build`, and `PYTHONPATH=..:. .venv/bin/pytest ../frontend/tests -q`.
+- Added `frontend/src/components/adminSettings/AdminSettingsPrimarySections.tsx` for the branding, locale/admin, and AI-key form sections.
+- Added `frontend/src/components/adminSettings/AdminSettingsSecondarySections.tsx` for the email-settings and auth-base-URL form sections.
+- Reduced `frontend/src/components/AdminSettings.tsx` to route/auth gating plus form orchestration against `useAdminSettingsForm.ts`.
+- Added direct regression coverage in `frontend/src/components/AdminSettings.test.tsx` for edited SMTP field wiring and the STARTTLS toggle during email-settings checks.
+- Re-ran focused frontend checks with `npx vitest run src/components/AdminSettings.test.tsx`.
+- Re-ran the full frontend verification path successfully: `npm test`, `npm run lint`, `npm run build`, and `PYTHONPATH=. backend/.venv/bin/pytest frontend/tests -q`.
 
 ## Current status
-The initialized app shell is behaviorally unchanged but structurally safer: branding/mobile-nav state lives in `useInitializedAppShellState.ts`, navigation rendering lives in `AppShellNav.tsx`, and `InitializedAppShell.tsx` is now focused on the route table and shell frame. The full frontend verification state is green: frontend `126` Vitest tests and browser `17 passed`.
+The admin settings UI is behaviorally unchanged but structurally safer: `AdminSettings.tsx` now composes smaller section components, while state and save/check actions stay in `useAdminSettingsForm.ts`. The full frontend verification state is green: frontend `127` Vitest tests and browser `17 passed`.
 
 ## Next step
-Next structural cleanup target is `frontend/src/components/Dashboard.tsx`, which is now one of the clearer remaining frontend seams after the auth-page and shell refactors and likely wants the same state/render separation.
+Next structural cleanup target is `frontend/src/contexts/uiLabels/useUiLabelStore.ts`, which is still a comparatively large handwritten frontend module and mixes cache hydration, fetch/update orchestration, and subscriber notification concerns.
 
 ## Important files
 - AGENTS.md
 - HANDOFF.md
-- frontend/src/components/InitializedAppShell.tsx
-- frontend/src/components/InitializedAppShell.test.tsx
-- frontend/src/components/appShell/useInitializedAppShellState.ts
-- frontend/src/components/appShell/AppShellNav.tsx
-- frontend/src/components/Dashboard.tsx
-- frontend/src/components/ResetPassword.tsx
+- frontend/src/components/AdminSettings.tsx
+- frontend/src/components/AdminSettings.test.tsx
+- frontend/src/components/adminSettings/AdminSettingsPrimarySections.tsx
+- frontend/src/components/adminSettings/AdminSettingsSecondarySections.tsx
+- frontend/src/components/adminSettings/useAdminSettingsForm.ts
+- frontend/src/contexts/uiLabels/useUiLabelStore.ts
 
 ## Notes for next session
-The app-shell refactor introduced a new direct shell test because mobile nav behavior was previously only covered indirectly. One local verification pitfall remains unchanged: do not run two Playwright pytest commands in parallel against `frontend/tests/conftest.py`, because they share `frontend_e2e.db` and can collide during Alembic setup.
+The admin-settings refactor kept logic in `useAdminSettingsForm.ts`; only render sections moved. The browser pytest leg must still be run serially because `frontend/tests/conftest.py` shares `frontend_e2e.db` during Alembic setup. Also note that the old handoff command using `frontend/.venv/bin/pytest` was stale in this workspace; the working command is `PYTHONPATH=. backend/.venv/bin/pytest frontend/tests -q`.
 
 ## Last updated
-2026-03-19 06:34 UTC
+2026-03-20 00:24 UTC
