@@ -6,6 +6,7 @@ import {localeLabels} from "./localeUtils";
 import { getAccessToken } from "../auth/tokenStore.ts";
 import { setSavedUiLocalePreference } from "../api/userSettings.ts";
 import { persistActiveUiLocale } from "../i18n/localeDirection.ts";
+import { getPreferredUiLocale } from "../i18n/uiLocale.ts";
 
 export default function LocaleSelector() {
     const [modalOpen, setModalOpen] = useState(false);
@@ -13,7 +14,7 @@ export default function LocaleSelector() {
     const [loading, setLoading] = useState(true);
 
     // Start with saved locale or browser default
-    const currentLocale = localStorage.getItem("uiLocale") || navigator.language?.slice(0, 2) || "en";
+    const currentLocale = getPreferredUiLocale();
 
     useEffect(() => {
         async function loadLocales() {

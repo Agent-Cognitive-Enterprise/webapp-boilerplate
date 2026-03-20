@@ -1,4 +1,5 @@
 import {normalizeLocale} from "../../i18n/setupWizardLocales.ts";
+import { getPreferredUiLocale } from "../../i18n/uiLocale.ts";
 
 export const EXISTING_SECRET_PLACEHOLDER = "********";
 
@@ -22,5 +23,5 @@ export function parseSupportedLocales(raw: string): string[] {
 }
 
 export function resolveAdminSettingsLocale(): string {
-    return normalizeLocale(localStorage.getItem("uiLocale") || navigator.language?.slice(0, 2) || "en") || "en";
+    return normalizeLocale(getPreferredUiLocale()) || "en";
 }

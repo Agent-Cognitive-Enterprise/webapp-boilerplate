@@ -1,3 +1,5 @@
+import { getPreferredUiLocale, setStoredUiLocale } from "./uiLocale.ts";
+
 const RTL_LANGUAGE_CODES = new Set([
     "ar",
     "fa",
@@ -10,15 +12,11 @@ export function normalizeLocaleTag(locale: string): string {
 }
 
 export function getActiveUiLocale(): string {
-    return normalizeLocaleTag(
-        localStorage.getItem("uiLocale") || navigator.language || "en",
-    );
+    return normalizeLocaleTag(getPreferredUiLocale());
 }
 
 export function persistActiveUiLocale(locale: string): string {
-    const normalized = normalizeLocaleTag(locale) || "en";
-    localStorage.setItem("uiLocale", normalized);
-    return normalized;
+    return normalizeLocaleTag(setStoredUiLocale(locale)) || "en";
 }
 
 export function isRtlLocale(locale: string): boolean {

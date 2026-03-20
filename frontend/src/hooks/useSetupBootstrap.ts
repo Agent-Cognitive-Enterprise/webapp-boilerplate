@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { getSetupStatus } from "../api/setup.ts";
 import { resolveSetupLocale, SETUP_SUPPORTED_LOCALES } from "../i18n/setupLocaleMeta.ts";
 import { applyDocumentLocaleDirection, getActiveUiLocale } from "../i18n/localeDirection.ts";
+import { getPreferredUiLocale } from "../i18n/uiLocale.ts";
 
 const DEFAULT_SETUP_COPY = {
     checkingSetupStatus: "Checking setup status...",
@@ -39,8 +40,7 @@ export function useSetupBootstrap(): UseSetupBootstrapResult {
     const [setupEmailDefaults, setSetupEmailDefaults] = useState<SetupEmailDefaults>(null);
     const [setupCopy, setSetupCopy] = useState(DEFAULT_SETUP_COPY);
 
-    const setupLocale =
-        resolveSetupLocale(localStorage.getItem("uiLocale") || navigator.language || "en") ?? "en";
+    const setupLocale = resolveSetupLocale(getPreferredUiLocale()) ?? "en";
 
     useEffect(() => {
         applyDocumentLocaleDirection(getActiveUiLocale());

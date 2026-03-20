@@ -1,13 +1,9 @@
 import {useMemo} from "react";
 import {useUiLabel} from "./useUiLabel";
+import { getPreferredUiLocale } from "../i18n/uiLocale.ts";
 
 export function resolveUiLabelLocale(localeOverride?: string): string {
-    return (
-        localeOverride ||
-        localStorage.getItem("uiLocale") ||
-        navigator.language?.slice(0, 2) ||
-        "en"
-    );
+    return getPreferredUiLocale(localeOverride);
 }
 
 export function applyUiLabelFillers(

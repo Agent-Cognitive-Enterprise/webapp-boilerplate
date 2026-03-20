@@ -16,12 +16,16 @@ Keep CI stable while making locale persistence behavior truthful across frontend
 - Wired frontend locale persistence through `frontend/src/api/userSettings.ts`, `frontend/src/contexts/AuthContext.tsx`, and `frontend/src/components/UiLocaleSelector.tsx` so authenticated users save locale selection to `/user-settings` and hydrate it on login/startup.
 - Added focused frontend coverage in `frontend/src/contexts/AuthContext.test.tsx` and `frontend/src/components/UiLocaleSelector.test.tsx`, and strengthened the Playwright locale test to clear `localStorage` before relogin so it proves server-backed hydration.
 - Re-ran full frontend and backend verification after the locale persistence wiring.
+- Added `frontend/src/i18n/uiLocale.ts` as the shared locale source for stored locale, navigator fallback, and precedence resolution.
+- Moved `useUiLabelText`, `UiLocaleSelector`, setup bootstrap, and admin-settings locale resolution onto the shared `uiLocale` helper instead of each reading `localStorage` directly.
+- Added focused coverage in `frontend/src/i18n/uiLocale.test.ts`.
+- Re-ran the full frontend verification path after consolidating the locale helper.
 
 ## Current status
-Locale persistence is now dual-layer: `localStorage` remains the fast client cache, and authenticated users also persist locale through `/user-settings`, which is hydrated on login/startup before the authenticated shell renders. Frontend verification is green: `136` Vitest tests passed, lint passed, build passed, and `19` Playwright tests passed. Backend verification is green: backend lint, scoped mypy, and `168` pytest tests passed.
+Locale persistence is now dual-layer and has a shared frontend source: `frontend/src/i18n/uiLocale.ts` owns locale precedence, `localStorage` remains the fast client cache, and authenticated users also persist locale through `/user-settings`, which is hydrated on login/startup before the authenticated shell renders. Frontend verification is green: `139` Vitest tests passed, lint passed, build passed, and `19` Playwright tests passed. Backend verification is green: backend lint, scoped mypy, and `168` pytest tests passed.
 
 ## Next step
-Next meaningful step is cleanup around the new locale-persistence path: centralize locale reads/writes so `useUiLabelText`, setup bootstrap, admin settings helpers, and document-direction logic all go through one shared locale source instead of each touching `localStorage` directly.
+Next meaningful step is the smaller cleanup left after this consolidation: review remaining test setup and any non-production helpers that still touch `localStorage` directly for `uiLocale`, and decide whether they should move to `uiLocale.ts` as well or remain explicit test fixtures.
 
 ## Important files
 - AGENTS.md
@@ -31,11 +35,12 @@ Next meaningful step is cleanup around the new locale-persistence path: centrali
 - frontend/src/api/userSettings.ts
 - frontend/src/contexts/AuthContext.tsx
 - frontend/src/components/UiLocaleSelector.tsx
+- frontend/src/i18n/uiLocale.ts
 - frontend/src/i18n/localeDirection.ts
 - backend/tests/e2e/test_user_settings_e2e.py
 
 ## Notes for next session
-Locale selection is no longer `localStorage`-only for authenticated users: the selector now attempts to save through `/user-settings`, and `AuthContext` hydrates that preference on login/startup before setting the authenticated user. Several frontend call sites still read `localStorage` directly, so there is duplication left to consolidate. The new `UiLabel` Playwright test uses a DB helper to verify suggestion persistence because the UI does not surface stored suggestion counts directly. The browser pytest note is unchanged: `frontend/tests/conftest.py` still shares `frontend_e2e.db`, so Playwright pytest runs must stay serial.
+Locale selection is no longer `localStorage`-only for authenticated users: the selector now attempts to save through `/user-settings`, `AuthContext` hydrates that preference on login/startup before setting the authenticated user, and `frontend/src/i18n/uiLocale.ts` now owns the shared locale precedence logic. Remaining direct `uiLocale` touches are mostly in tests and intentional setup code. The new `UiLabel` Playwright test uses a DB helper to verify suggestion persistence because the UI does not surface stored suggestion counts directly. The browser pytest note is unchanged: `frontend/tests/conftest.py` still shares `frontend_e2e.db`, so Playwright pytest runs must stay serial.
 
 ## Last updated
-2026-03-20 03:11 UTC
+2026-03-20 03:28 UTC
