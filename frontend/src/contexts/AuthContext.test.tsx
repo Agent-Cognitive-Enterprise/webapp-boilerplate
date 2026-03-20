@@ -7,6 +7,7 @@ import { AuthContext, AuthProvider } from "./AuthContext.tsx";
 import { notifySessionInvalidated } from "../auth/sessionEvents.ts";
 import { clearAccessToken, getAccessToken } from "../auth/tokenStore.ts";
 import { fetchUserProfile, loginUser, logoutUser, registerUser } from "../api/auth.ts";
+import { getSavedUiLocalePreference } from "../api/userSettings.ts";
 
 const mockNavigate = vi.fn();
 
@@ -24,6 +25,14 @@ vi.mock("../api/auth.ts", () => ({
     registerUser: vi.fn(),
     logoutUser: vi.fn(),
 }));
+
+vi.mock("../api/userSettings.ts", async () => {
+    const actual = await vi.importActual<typeof import("../api/userSettings.ts")>("../api/userSettings.ts");
+    return {
+        ...actual,
+        getSavedUiLocalePreference: vi.fn(),
+    };
+});
 
 function ContextHarness() {
     const auth = React.useContext(AuthContext);
@@ -70,8 +79,10 @@ describe("AuthProvider", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         clearAccessToken();
+        localStorage.removeItem("uiLocale");
         mockNavigate.mockReset();
         vi.spyOn(console, "error").mockImplementation(() => undefined);
+        vi.mocked(getSavedUiLocalePreference).mockResolvedValue(null);
     });
 
     function renderProvider() {
@@ -104,6 +115,29 @@ describe("AuthProvider", () => {
         expect(screen.getByTestId("user-email")).toHaveTextContent("user@example.com");
         expect(getAccessToken()).toBe("token-123");
         expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
+    });
+
+    it("hydrates saved locale preference before completing login", async () => {
+        vi.mocked(loginUser).mockResolvedValue({
+            access_token: "token-123",
+            token_type: "bearer",
+        });
+        vi.mocked(fetchUserProfile).mockResolvedValue({
+            id: "user-1",
+            full_name: "Test User",
+            email: "user@example.com",
+            is_admin: false,
+            is_active: true,
+        });
+        vi.mocked(getSavedUiLocalePreference).mockResolvedValue("ar");
+
+        renderProvider();
+        fireEvent.click(screen.getByRole("button", { name: "Login" }));
+
+        await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("token-123"));
+        expect(localStorage.getItem("uiLocale")).toBe("ar");
+        expect(document.documentElement.lang).toBe("ar");
+        expect(document.documentElement.dir).toBe("rtl");
     });
 
     it("clears local auth state and redirects even when backend logout fails", async () => {

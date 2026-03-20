@@ -6,6 +6,8 @@ import {useNavigate} from 'react-router-dom';
 import { subscribeToSessionInvalidation } from '../auth/sessionEvents.ts';
 import { clearAccessToken, getAccessToken, setAccessToken } from '../auth/tokenStore.ts';
 import {loginUser, fetchUserProfile, registerUser, logoutUser} from '../api/auth.ts';
+import { getSavedUiLocalePreference } from '../api/userSettings.ts';
+import { applyDocumentLocaleDirection, persistActiveUiLocale } from '../i18n/localeDirection.ts';
 
 // Define types for user and context
 interface User {
@@ -42,11 +44,21 @@ const AuthProvider = ({children}: AuthProviderProps) => {
         clearAccessToken();
     };
 
+    const hydrateStoredLocalePreference = async () => {
+        const savedLocale = await getSavedUiLocalePreference();
+        if (!savedLocale) {
+            return;
+        }
+        const normalized = persistActiveUiLocale(savedLocale);
+        applyDocumentLocaleDirection(normalized);
+    };
+
     useEffect(() => {
         if (token) {
             const getUser = async () => {
                 try {
                     const userData = await fetchUserProfile();
+                    await hydrateStoredLocalePreference();
                     setUser(userData);
                 } catch (err) {
                     console.error('Failed to fetch user profile:', err);
@@ -74,6 +86,7 @@ const AuthProvider = ({children}: AuthProviderProps) => {
                 setAccessToken(response.access_token);
                 setToken(response.access_token);
                 const userProfile = await fetchUserProfile();
+                await hydrateStoredLocalePreference();
                 setUser(userProfile);
                 navigate('/dashboard');
             } else {

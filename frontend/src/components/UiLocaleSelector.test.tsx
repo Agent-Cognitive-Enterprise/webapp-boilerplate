@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import UiLocaleSelector from './UiLocaleSelector';
 import api from '../api/api';
+import * as userSettingsApi from '../api/userSettings';
 
 vi.mock('../api/api');
 
@@ -66,6 +67,27 @@ describe('UiLocaleSelector Component', () => {
     fireEvent.click(screen.getByText('English'));
     fireEvent.click(screen.getByRole('button', { name: 'Select French' }));
 
+    expect(localStorage.getItem('uiLocale')).toBe('fr');
+    expect(reloadSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('persists selected locale through user settings when authenticated', async () => {
+    const saveSpy = vi.spyOn(userSettingsApi, 'setSavedUiLocalePreference').mockResolvedValue('fr');
+    vi.mocked(api.post).mockResolvedValue({ data: { data: ['en', 'fr'] } } as any);
+    localStorage.setItem('token', 'token-123');
+
+    render(<UiLocaleSelector />);
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByText('English'));
+    fireEvent.click(screen.getByRole('button', { name: 'Select French' }));
+
+    await waitFor(() => {
+      expect(saveSpy).toHaveBeenCalledWith('fr');
+    });
     expect(localStorage.getItem('uiLocale')).toBe('fr');
     expect(reloadSpy).toHaveBeenCalledTimes(1);
   });

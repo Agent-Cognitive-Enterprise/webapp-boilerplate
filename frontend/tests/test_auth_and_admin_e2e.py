@@ -186,6 +186,9 @@ def test_profile_locale_selection_persists_across_reload_and_relogin(visual_page
     expect(page.get_by_text("العربية")).to_be_visible()
     snap("login_locale_after_logout")
 
+    page.evaluate("window.localStorage.removeItem('uiLocale')")
+    assert page.evaluate("window.localStorage.getItem('uiLocale')") is None
+
     page.locator('input[name="email"]').fill("persistent-locale@example.com")
     page.locator('input[name="password"]').fill("LocalePass123!")
     page.locator("button[type='submit']").click()

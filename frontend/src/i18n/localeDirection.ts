@@ -15,6 +15,12 @@ export function getActiveUiLocale(): string {
     );
 }
 
+export function persistActiveUiLocale(locale: string): string {
+    const normalized = normalizeLocaleTag(locale) || "en";
+    localStorage.setItem("uiLocale", normalized);
+    return normalized;
+}
+
 export function isRtlLocale(locale: string): boolean {
     const normalized = normalizeLocaleTag(locale).toLowerCase();
     if (!normalized) return false;

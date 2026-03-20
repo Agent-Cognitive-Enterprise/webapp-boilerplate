@@ -1,7 +1,7 @@
 # HANDOFF
 
 ## Current objective
-Keep CI stable while keeping integration coverage truthful. The highest-value frontend and backend E2E gaps identified in the latest test rescan are now covered.
+Keep CI stable while making locale persistence behavior truthful across frontend and backend. Locale selection is now persisted through `/user-settings` as well as `localStorage`.
 
 ## Completed in this session
 - Re-scanned frontend and backend test coverage to identify whether more E2E work is actually needed.
@@ -13,26 +13,29 @@ Keep CI stable while keeping integration coverage truthful. The highest-value fr
 - Added `backend/tests/e2e/test_user_settings_e2e.py` covering unauthorized access plus save/fetch/update persistence for `/user-settings`.
 - Re-ran focused backend checks with `.venv/bin/pytest tests/e2e/test_user_settings_e2e.py -q` and `.venv/bin/ruff check tests/e2e/test_user_settings_e2e.py`.
 - Re-ran the full backend verification path successfully with `make verify-backend`.
+- Wired frontend locale persistence through `frontend/src/api/userSettings.ts`, `frontend/src/contexts/AuthContext.tsx`, and `frontend/src/components/UiLocaleSelector.tsx` so authenticated users save locale selection to `/user-settings` and hydrate it on login/startup.
+- Added focused frontend coverage in `frontend/src/contexts/AuthContext.test.tsx` and `frontend/src/components/UiLocaleSelector.test.tsx`, and strengthened the Playwright locale test to clear `localStorage` before relogin so it proves server-backed hydration.
+- Re-ran full frontend and backend verification after the locale persistence wiring.
 
 ## Current status
-The most obvious integration gaps from the test rescan are closed. Frontend verification is green: `134` Vitest tests passed, lint passed, build passed, and `19` Playwright tests passed. Backend verification is green: backend lint, scoped mypy, and `168` pytest tests passed.
+Locale persistence is now dual-layer: `localStorage` remains the fast client cache, and authenticated users also persist locale through `/user-settings`, which is hydrated on login/startup before the authenticated shell renders. Frontend verification is green: `136` Vitest tests passed, lint passed, build passed, and `19` Playwright tests passed. Backend verification is green: backend lint, scoped mypy, and `168` pytest tests passed.
 
 ## Next step
-Next meaningful step is product-driven rather than coverage-driven. The clearest follow-up is deciding whether locale selection should stay `localStorage`-only or be wired through `/user-settings` for cross-device persistence; if that behavior changes, replace the current same-browser E2E with a server-backed persistence flow.
+Next meaningful step is cleanup around the new locale-persistence path: centralize locale reads/writes so `useUiLabelText`, setup bootstrap, admin settings helpers, and document-direction logic all go through one shared locale source instead of each touching `localStorage` directly.
 
 ## Important files
 - AGENTS.md
 - HANDOFF.md
 - frontend/tests/test_auth_and_admin_e2e.py
 - frontend/tests/state_helpers.py
+- frontend/src/api/userSettings.ts
+- frontend/src/contexts/AuthContext.tsx
 - frontend/src/components/UiLocaleSelector.tsx
-- frontend/src/components/UserProfile.tsx
-- frontend/src/components/UiLabel.tsx
-- backend/api/user_settings.py
+- frontend/src/i18n/localeDirection.ts
 - backend/tests/e2e/test_user_settings_e2e.py
 
 ## Notes for next session
-Locale selection is currently persisted via `localStorage` in `frontend/src/components/UiLocaleSelector.tsx`; it is not yet wired to `/user-settings`, so the locale Playwright test intentionally proves same-browser persistence rather than cross-device persistence. The new `UiLabel` Playwright test uses a DB helper to verify suggestion persistence because the UI does not surface stored suggestion counts directly. The browser pytest note is unchanged: `frontend/tests/conftest.py` still shares `frontend_e2e.db`, so Playwright pytest runs must stay serial.
+Locale selection is no longer `localStorage`-only for authenticated users: the selector now attempts to save through `/user-settings`, and `AuthContext` hydrates that preference on login/startup before setting the authenticated user. Several frontend call sites still read `localStorage` directly, so there is duplication left to consolidate. The new `UiLabel` Playwright test uses a DB helper to verify suggestion persistence because the UI does not surface stored suggestion counts directly. The browser pytest note is unchanged: `frontend/tests/conftest.py` still shares `frontend_e2e.db`, so Playwright pytest runs must stay serial.
 
 ## Last updated
-2026-03-20 03:02 UTC
+2026-03-20 03:11 UTC

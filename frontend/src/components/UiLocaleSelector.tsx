@@ -3,6 +3,9 @@ import {useEffect, useState} from "react";
 import SelectLocaleModal from "./modal/SelectLocale.tsx";
 import api from "../api/api";
 import {localeLabels} from "./localeUtils";
+import { getAccessToken } from "../auth/tokenStore.ts";
+import { setSavedUiLocalePreference } from "../api/userSettings.ts";
+import { persistActiveUiLocale } from "../i18n/localeDirection.ts";
 
 export default function LocaleSelector() {
     const [modalOpen, setModalOpen] = useState(false);
@@ -40,8 +43,11 @@ export default function LocaleSelector() {
         loadLocales().then();
     }, []);
 
-    function handleSelectLocale(loc: string) {
-        localStorage.setItem("uiLocale", loc);
+    async function handleSelectLocale(loc: string) {
+        persistActiveUiLocale(loc);
+        if (getAccessToken()) {
+            await setSavedUiLocalePreference(loc);
+        }
         // Reload the page immediately to apply locale globally
         window.location.reload();
     }
