@@ -1,35 +1,37 @@
 # HANDOFF
 
 ## Current objective
-Keep CI stable while reducing structural risk in large handwritten source files. The latest completed work split the ui-label store into dedicated API, polling, and subscription helpers without changing provider behavior.
+Keep CI stable while reducing structural risk in large handwritten source files. The latest completed work split the backend ui-label API into dedicated endpoint, handler, background-task, and support modules without changing behavior.
 
 ## Completed in this session
-- Added `frontend/src/contexts/uiLabels/uiLabelApi.ts` to own `/ui-label` request helpers and payload normalization.
-- Added `frontend/src/contexts/uiLabels/subscriptions.ts` to own listener registration, notification, and cleanup.
-- Added `frontend/src/contexts/uiLabels/polling.ts` to own the shared poll-until-label-available loop used after add/suggest flows.
-- Reduced `frontend/src/contexts/uiLabels/useUiLabelStore.ts` from `330` lines to `211` lines while keeping the same provider contract.
-- Added direct helper coverage in `frontend/src/contexts/uiLabels/uiLabelApi.test.ts`, `frontend/src/contexts/uiLabels/subscriptions.test.ts`, and `frontend/src/contexts/uiLabels/polling.test.ts`.
-- Re-ran focused ui-label checks with `npx vitest run src/contexts/UiLabelProvider.test.tsx src/hooks/useUiLabel.test.tsx src/contexts/uiLabels/cache.test.ts src/contexts/uiLabels/uiLabelApi.test.ts src/contexts/uiLabels/subscriptions.test.ts src/contexts/uiLabels/polling.test.ts`.
-- Re-ran the full frontend verification path successfully: `npm test`, `npm run lint`, `npm run build`, and `PYTHONPATH=. backend/.venv/bin/pytest frontend/tests -q`.
+- Added `backend/api/ui_label_models.py` for the request/response models.
+- Added `backend/api/ui_label_support.py` for locale hash computation and response label-map shaping.
+- Added `backend/api/ui_label_background.py` for background translation and suggestion-evaluation task orchestration.
+- Added `backend/api/ui_label_handlers.py` for `list`, `get`, `add`, and `suggest` action handling plus shared response helpers.
+- Reduced `backend/api/ui_label.py` from `473` lines to `117` lines while preserving the endpoint signature and the monkeypatchable `schedule_translation` / `schedule_suggestion_evaluation` wrappers used by tests.
+- Added direct support coverage in `backend/tests/api/test_ui_label_support.py`.
+- Re-ran focused backend checks with `.venv/bin/pytest tests/api/test_ui_label.py tests/api/test_ui_label_support.py -q` and `.venv/bin/ruff check` on the touched backend files.
+- Re-ran the full backend verification path successfully with `make verify-backend`.
 
 ## Current status
-The ui-label frontend path is behaviorally unchanged but structurally safer: request normalization, listener bookkeeping, and polling are now isolated helpers, while `useUiLabelStore.ts` focuses on composing cache state and the provider API. The full frontend verification state is green: frontend `134` Vitest tests and browser `17 passed`.
+The backend ui-label path is behaviorally unchanged but structurally safer: the FastAPI endpoint now delegates action branching to `ui_label_handlers.py`, background work to `ui_label_background.py`, and shared hash/response shaping to `ui_label_support.py`. Full backend verification is green: backend lint, scoped mypy, and `145` pytest tests passed.
 
 ## Next step
-Next structural cleanup target is `backend/api/ui_label.py`, which is still one of the largest handwritten backend modules and likely wants the same separation between request validation, action dispatch, and response shaping.
+Next structural cleanup target is `backend/api/auth.py`, which is now the largest handwritten backend API module and likely wants the same separation between request parsing, token/session flow, and response shaping.
 
 ## Important files
 - AGENTS.md
 - HANDOFF.md
-- frontend/src/contexts/uiLabels/useUiLabelStore.ts
-- frontend/src/contexts/uiLabels/uiLabelApi.ts
-- frontend/src/contexts/uiLabels/subscriptions.ts
-- frontend/src/contexts/uiLabels/polling.ts
-- frontend/src/contexts/uiLabels/uiLabelApi.test.ts
-- frontend/src/contexts/UiLabelProvider.test.tsx
+- backend/api/ui_label.py
+- backend/api/ui_label_models.py
+- backend/api/ui_label_handlers.py
+- backend/api/ui_label_background.py
+- backend/api/ui_label_support.py
+- backend/tests/api/test_ui_label.py
+- backend/tests/api/test_ui_label_support.py
 
 ## Notes for next session
-The ui-label refactor intentionally kept cache persistence in `cache.ts`; only network normalization, polling, and subscription bookkeeping moved out of `useUiLabelStore.ts`. The browser pytest leg must still be run serially because `frontend/tests/conftest.py` shares `frontend_e2e.db` during Alembic setup. The working browser-test command in this workspace remains `PYTHONPATH=. backend/.venv/bin/pytest frontend/tests -q`.
+The backend ui-label refactor intentionally preserved the wrapper functions in `api/ui_label.py` because the existing API tests monkeypatch `api.ui_label.schedule_translation`, `api.ui_label.schedule_suggestion_evaluation`, `api.ui_label.AsyncSessionLocal`, and `api.ui_label.evaluate_label_suggestions`. Keep those seams stable unless the tests are updated in the same change. The browser pytest note is unchanged: `frontend/tests/conftest.py` still shares `frontend_e2e.db`, so Playwright pytest runs must stay serial.
 
 ## Last updated
-2026-03-20 00:31 UTC
+2026-03-20 00:46 UTC
