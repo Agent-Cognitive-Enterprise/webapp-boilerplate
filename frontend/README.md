@@ -39,7 +39,7 @@ Modern React + TypeScript frontend for the webapp-boilerplate authentication and
 
 ### Authentication
 - **User Registration** with email validation and strong password requirements
-- **Login/Logout** with JWT token-based authentication
+- **Login/Logout** with cookie-backed JWT session authentication
 - **Secure Session Management** with automatic token refresh
 - **Proper Logout** - Notifies backend to revoke refresh tokens
 
@@ -50,8 +50,7 @@ Modern React + TypeScript frontend for the webapp-boilerplate authentication and
 - **Multilingual Support** - UI labels in multiple languages with translation submission
 
 ### Security Features
-- Access tokens stored in localStorage (short-lived)
-- Refresh tokens in HttpOnly cookies (long-lived)
+- Access and refresh tokens stored in HttpOnly cookies for browser sessions
 - Automatic token refresh on expiry
 - Backend notification on logout for token revocation
 - Protected routes requiring authentication
@@ -222,27 +221,26 @@ Set the backend deploy secret `INITIAL_SETUP_TOKEN`, then complete `/setup` in t
 ### Login
 1. User enters email and password
 2. Frontend calls `/auth/token` endpoint
-3. Backend returns access token (JWT) in response body
-4. Backend sets refresh token in HttpOnly cookie
-5. Frontend stores access token in localStorage
-6. User redirected to dashboard
+3. Backend sets access and refresh tokens in HttpOnly cookies for browser sessions
+4. Frontend fetches `/users/me/` to hydrate authenticated user state
+5. User redirected to dashboard
 
 ### Authenticated Requests
-1. Axios interceptor adds `Authorization: Bearer <token>` header
-2. Backend validates token and processes request
+1. Axios sends requests with `withCredentials: true`
+2. Backend validates the access token from cookies and processes the request
 
 ### Token Refresh
 1. When access token expires (401 response)
 2. Axios interceptor automatically calls `/auth/refresh`
 3. Backend validates refresh token from cookie
-4. Backend returns new access token
-5. Interceptor retries original request with new token
+4. Backend rotates the session cookies
+5. Interceptor retries the original request
 
 ### Logout
 1. User clicks logout button
 2. Frontend calls `/auth/logout` endpoint
 3. Backend revokes refresh token and descendants
-4. Frontend clears access token from localStorage
+4. Backend clears the auth cookies
 5. User redirected to login page
 
 ## Multilingual Support
@@ -266,8 +264,7 @@ Labels are:
 ## Security Best Practices
 
 ✅ **Implemented:**
-- Access tokens in localStorage (short-lived, convenient for API calls)
-- Refresh tokens in HttpOnly cookies (secure, long-lived)
+- Cookie-backed browser sessions with HttpOnly access and refresh tokens
 - Automatic token refresh
 - Proper logout with backend notification
 - Protected routes with RequireAuth wrapper
@@ -314,7 +311,7 @@ const response = await api.post('/endpoint', { data });
 ```
 
 The API client automatically:
-- Adds authentication headers
+- Sends browser credentials
 - Handles token refresh
 - Retries failed requests
 

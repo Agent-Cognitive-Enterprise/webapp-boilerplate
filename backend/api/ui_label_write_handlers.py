@@ -17,7 +17,7 @@ ScheduleSuggestionEvaluation = Callable[..., Awaitable[None]]
 
 @dataclass(frozen=True)
 class SuggestActionInput:
-    token: str
+    token: str | None
     locale: str
     key: str | None
     value: str | None
@@ -83,6 +83,7 @@ async def handle_suggest_action(
     dependencies: SuggestActionDependencies,
 ) -> UILabelResponse:
     current_user = await dependencies.get_current_user(
+        request=request,
         token=action_input.token,
         session=session,
     )

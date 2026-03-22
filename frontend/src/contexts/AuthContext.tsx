@@ -4,8 +4,7 @@ import {createContext, useState, useEffect} from 'react';
 import type {ReactNode} from 'react';
 import {useNavigate} from 'react-router-dom';
 import { subscribeToSessionInvalidation } from '../auth/sessionEvents.ts';
-import { clearAccessToken, getAccessToken, setAccessToken } from '../auth/tokenStore.ts';
-import {loginUser, fetchUserProfile, registerUser, logoutUser} from '../api/auth.ts';
+import {loginUser, fetchUserProfile, logoutUser, refreshUserSession, registerUser} from '../api/auth.ts';
 import { getSavedUiLocalePreference } from '../api/userSettings.ts';
 import { applyDocumentLocaleDirection, persistActiveUiLocale } from '../i18n/localeDirection.ts';
 
@@ -21,6 +20,7 @@ interface User {
 interface AuthContextType {
     token: string | null;
     user: User | null;
+    isLoading?: boolean;
     login: (username: string, password: string) => Promise<void>;
     register: (full_name: string, email: string, password: string) => Promise<void>;
     logout: () => void;
@@ -34,14 +34,14 @@ interface AuthProviderProps {
 }
 
 const AuthProvider = ({children}: AuthProviderProps) => {
-    const [token, setToken] = useState<string | null>(getAccessToken());
+    const [token, setToken] = useState<string | null>(null);
     const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
 
     const clearAuthState = () => {
         setToken(null);
         setUser(null);
-        clearAccessToken();
     };
 
     const hydrateStoredLocalePreference = async () => {
@@ -54,44 +54,60 @@ const AuthProvider = ({children}: AuthProviderProps) => {
     };
 
     useEffect(() => {
-        if (token) {
-            const getUser = async () => {
+        let active = true;
+
+        const getUser = async () => {
+            setIsLoading(true);
+            try {
+                let userData;
                 try {
-                    const userData = await fetchUserProfile();
-                    await hydrateStoredLocalePreference();
-                    setUser(userData);
-                } catch (err) {
-                    console.error('Failed to fetch user profile:', err);
-                    clearAuthState();
-                    navigate('/login');
+                    userData = await fetchUserProfile({ skipAuthRefresh: true });
+                } catch {
+                    await refreshUserSession();
+                    userData = await fetchUserProfile({ skipAuthRefresh: true });
                 }
-            };
-            void getUser();
-        } else {
-            setUser(null);
-        }
-    }, [navigate, token]);
+                if (!active) {
+                    return;
+                }
+                await hydrateStoredLocalePreference();
+                setUser(userData);
+                setToken('cookie-session');
+            } catch {
+                if (!active) {
+                    return;
+                }
+                clearAuthState();
+            } finally {
+                if (active) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        void getUser();
+
+        return () => {
+            active = false;
+        };
+    }, []);
 
     useEffect(() => {
         return subscribeToSessionInvalidation(() => {
             clearAuthState();
+            setIsLoading(false);
             navigate('/login');
         });
     }, [navigate]);
 
     const login = async (username: string, password: string) => {
         try {
-            const response = await loginUser({username, password});
-            if (response?.access_token) {
-                setAccessToken(response.access_token);
-                setToken(response.access_token);
-                const userProfile = await fetchUserProfile();
-                await hydrateStoredLocalePreference();
-                setUser(userProfile);
-                navigate('/dashboard');
-            } else {
-                throw new Error('Invalid response from server');
-            }
+            setIsLoading(true);
+            await loginUser({username, password});
+            const userProfile = await fetchUserProfile();
+            await hydrateStoredLocalePreference();
+            setToken('cookie-session');
+            setUser(userProfile);
+            navigate('/dashboard');
         } catch (err: any) {
             const status = err.response?.status;
             const detail = err.response?.data?.detail;
@@ -107,6 +123,8 @@ const AuthProvider = ({children}: AuthProviderProps) => {
             } else {
                 throw new Error('Login failed. Please try again.');
             }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -140,13 +158,11 @@ const AuthProvider = ({children}: AuthProviderProps) => {
     };
 
     const setTokenInContext = (newToken: string | null) => {
-        setToken(newToken);
-        if (newToken) setAccessToken(newToken);
-        else clearAccessToken();
+        setToken(newToken ? 'cookie-session' : null);
     };
 
     return (
-        <AuthContext.Provider value={{token, user, login, register, logout, setToken: setTokenInContext}}>
+        <AuthContext.Provider value={{token, user, isLoading, login, register, logout, setToken: setTokenInContext}}>
             {children}
         </AuthContext.Provider>
     );

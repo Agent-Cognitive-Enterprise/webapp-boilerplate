@@ -65,7 +65,7 @@ describe("ui label api helpers", () => {
             },
             expect.objectContaining({
                 headers: expect.objectContaining({
-                    Authorization: "Bearer free",
+                    "Content-Type": "application/json",
                 }),
             }),
         );

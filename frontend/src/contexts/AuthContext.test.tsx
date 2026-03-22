@@ -5,7 +5,6 @@ import React from "react";
 
 import { AuthContext, AuthProvider } from "./AuthContext.tsx";
 import { notifySessionInvalidated } from "../auth/sessionEvents.ts";
-import { clearAccessToken, getAccessToken } from "../auth/tokenStore.ts";
 import { fetchUserProfile, loginUser, logoutUser, registerUser } from "../api/auth.ts";
 import { getSavedUiLocalePreference } from "../api/userSettings.ts";
 
@@ -78,11 +77,11 @@ function ContextHarness() {
 describe("AuthProvider", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        clearAccessToken();
         localStorage.removeItem("uiLocale");
         mockNavigate.mockReset();
         vi.spyOn(console, "error").mockImplementation(() => undefined);
         vi.mocked(getSavedUiLocalePreference).mockResolvedValue(null);
+        vi.mocked(fetchUserProfile).mockRejectedValue(new Error("Unauthorized"));
     });
 
     function renderProvider() {
@@ -95,25 +94,26 @@ describe("AuthProvider", () => {
         );
     }
 
-    it("stores the access token on login and loads the user profile", async () => {
+    it("marks the session authenticated on login and loads the user profile", async () => {
         vi.mocked(loginUser).mockResolvedValue({
             access_token: "token-123",
             token_type: "bearer",
         });
-        vi.mocked(fetchUserProfile).mockResolvedValue({
-            id: "user-1",
-            full_name: "Test User",
-            email: "user@example.com",
-            is_admin: false,
-            is_active: true,
-        });
+        vi.mocked(fetchUserProfile)
+            .mockRejectedValueOnce(new Error("Unauthorized"))
+            .mockResolvedValueOnce({
+                id: "user-1",
+                full_name: "Test User",
+                email: "user@example.com",
+                is_admin: false,
+                is_active: true,
+            });
 
         renderProvider();
         fireEvent.click(screen.getByRole("button", { name: "Login" }));
 
-        await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("token-123"));
+        await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("cookie-session"));
         expect(screen.getByTestId("user-email")).toHaveTextContent("user@example.com");
-        expect(getAccessToken()).toBe("token-123");
         expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
     });
 
@@ -122,26 +122,28 @@ describe("AuthProvider", () => {
             access_token: "token-123",
             token_type: "bearer",
         });
-        vi.mocked(fetchUserProfile).mockResolvedValue({
-            id: "user-1",
-            full_name: "Test User",
-            email: "user@example.com",
-            is_admin: false,
-            is_active: true,
-        });
+        vi.mocked(fetchUserProfile)
+            .mockRejectedValueOnce(new Error("Unauthorized"))
+            .mockResolvedValueOnce({
+                id: "user-1",
+                full_name: "Test User",
+                email: "user@example.com",
+                is_admin: false,
+                is_active: true,
+            });
         vi.mocked(getSavedUiLocalePreference).mockResolvedValue("ar");
 
         renderProvider();
         fireEvent.click(screen.getByRole("button", { name: "Login" }));
 
-        await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("token-123"));
+        await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("cookie-session"));
         expect(localStorage.getItem("uiLocale")).toBe("ar");
         expect(document.documentElement.lang).toBe("ar");
         expect(document.documentElement.dir).toBe("rtl");
     });
 
     it("clears local auth state and redirects even when backend logout fails", async () => {
-        vi.mocked(fetchUserProfile).mockResolvedValue({
+        vi.mocked(fetchUserProfile).mockResolvedValueOnce({
             id: "user-1",
             full_name: "Test User",
             email: "user@example.com",
@@ -149,16 +151,14 @@ describe("AuthProvider", () => {
             is_active: true,
         });
         vi.mocked(logoutUser).mockRejectedValue(new Error("backend down"));
-        localStorage.setItem("token", "persisted-token");
 
         renderProvider();
 
-        await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("persisted-token"));
+        await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("cookie-session"));
         fireEvent.click(screen.getByRole("button", { name: "Logout" }));
 
         await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("none"));
         expect(screen.getByTestId("user-email")).toHaveTextContent("none");
-        expect(getAccessToken()).toBeNull();
         expect(mockNavigate).toHaveBeenCalledWith("/login");
     });
 
@@ -199,24 +199,22 @@ describe("AuthProvider", () => {
     });
 
     it("responds to shared session invalidation by clearing auth state and redirecting", async () => {
-        vi.mocked(fetchUserProfile).mockResolvedValue({
+        vi.mocked(fetchUserProfile).mockResolvedValueOnce({
             id: "user-1",
             full_name: "Test User",
             email: "user@example.com",
             is_admin: false,
             is_active: true,
         });
-        localStorage.setItem("token", "persisted-token");
 
         renderProvider();
 
-        await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("persisted-token"));
+        await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("cookie-session"));
 
         notifySessionInvalidated("refresh_failed");
 
         await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("none"));
         expect(screen.getByTestId("user-email")).toHaveTextContent("none");
-        expect(getAccessToken()).toBeNull();
         expect(mockNavigate).toHaveBeenCalledWith("/login");
     });
 });

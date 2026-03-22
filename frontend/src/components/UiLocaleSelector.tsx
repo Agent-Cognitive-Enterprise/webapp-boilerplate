@@ -1,14 +1,15 @@
 // /frontend/src/components/UiLocaleSelector.tsx
-import {useEffect, useState} from "react";
+import {useContext, useEffect, useState} from "react";
 import SelectLocaleModal from "./modal/SelectLocale.tsx";
 import api from "../api/api";
 import {localeLabels} from "./localeUtils";
-import { getAccessToken } from "../auth/tokenStore.ts";
 import { setSavedUiLocalePreference } from "../api/userSettings.ts";
 import { persistActiveUiLocale } from "../i18n/localeDirection.ts";
 import { getPreferredUiLocale } from "../i18n/uiLocale.ts";
+import { AuthContext } from "../contexts/AuthContext.tsx";
 
 export default function LocaleSelector() {
+    const auth = useContext(AuthContext);
     const [modalOpen, setModalOpen] = useState(false);
     const [locales, setLocales] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
@@ -27,9 +28,7 @@ export default function LocaleSelector() {
                     {
                         headers: {
                             "Content-Type": "application/json",
-                            Authorization: "Bearer free"
                         },
-                        // skipAuthRefresh: true,
                     }
                 );
                 const data = resp?.data?.data ?? resp?.data ?? [];
@@ -46,7 +45,7 @@ export default function LocaleSelector() {
 
     async function handleSelectLocale(loc: string) {
         persistActiveUiLocale(loc);
-        if (getAccessToken()) {
+        if (auth?.token) {
             await setSavedUiLocalePreference(loc);
         }
         // Reload the page immediately to apply locale globally

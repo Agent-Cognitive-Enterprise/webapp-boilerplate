@@ -24,7 +24,7 @@ type AdminSettingsFormText = {
 
 export function useAdminSettingsForm(text: AdminSettingsFormText) {
     const auth = useContext(AuthContext);
-    const isAuthResolving = Boolean(auth?.token && !auth.user);
+    const isAuthResolving = Boolean(auth?.isLoading);
     const isAdmin = Boolean(auth?.user?.is_admin);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);

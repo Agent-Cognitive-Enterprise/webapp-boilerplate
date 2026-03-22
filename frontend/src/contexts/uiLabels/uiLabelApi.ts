@@ -88,7 +88,6 @@ export async function fetchUiLabelLocale(
         {
             headers: {
                 "Content-Type": "application/json",
-                Authorization: "Bearer free",
             },
         },
     );
@@ -110,7 +109,6 @@ export async function addUiLabelKey(locale: string, key: string): Promise<void> 
         {
             headers: {
                 "Content-Type": "application/json",
-                Authorization: "Bearer free",
             },
         },
     );
@@ -137,7 +135,6 @@ export async function suggestUiLabelValue(
         {
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
             },
         },
     );

@@ -4,7 +4,12 @@ from fastapi import HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.cookies import clear_refresh_cookie, set_refresh_cookie
+from auth.cookies import (
+    clear_access_cookie,
+    clear_refresh_cookie,
+    set_access_cookie,
+    set_refresh_cookie,
+)
 from auth.refresh_utils import (
     generate_refresh_token,
     get_client_ip_ua,
@@ -83,6 +88,11 @@ async def login_for_access_token_handler(
     )
     await session.commit()
 
+    set_access_cookie(
+        response,
+        access_token,
+        max_age=int(timedelta(minutes=AUTH_ACCESS_TOKEN_EXPIRE_MINUTES).total_seconds()),
+    )
     set_refresh_cookie(response, plain_rt, rt.expires_at)
 
     return Token(access_token=access_token, refresh_token="", token_type="bearer")
@@ -100,6 +110,7 @@ async def rotate_refresh_token_handler(
 
     plain_rt = request.cookies.get(COOKIE_REFRESH_NAME)
     if not plain_rt:
+        clear_access_cookie(response)
         clear_refresh_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -113,6 +124,7 @@ async def rotate_refresh_token_handler(
     rt_hash = hash_token(plain_rt)
     rt = await get_by_token_hash(session, rt_hash)
     if not rt:
+        clear_access_cookie(response)
         clear_refresh_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -125,6 +137,7 @@ async def rotate_refresh_token_handler(
     if rt.revoked:
         await revoke_token_and_descendants(session, rt)
         await session.commit()
+        clear_access_cookie(response)
         clear_refresh_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -141,6 +154,7 @@ async def rotate_refresh_token_handler(
     ):
         await revoke_token_and_descendants(session, rt)
         await session.commit()
+        clear_access_cookie(response)
         clear_refresh_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -158,6 +172,7 @@ async def rotate_refresh_token_handler(
     if expires_at <= datetime.now(timezone.utc):
         await mark_used_and_revoke(session, rt)
         await session.commit()
+        clear_access_cookie(response)
         clear_refresh_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -186,6 +201,7 @@ async def rotate_refresh_token_handler(
     await session.refresh(rt)
     db_user = await session.get(User, rt.user_id)
     if not db_user:
+        clear_access_cookie(response)
         clear_refresh_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -198,6 +214,7 @@ async def rotate_refresh_token_handler(
     if not db_user.is_active:
         await revoke_token_and_descendants(session, rt)
         await session.commit()
+        clear_access_cookie(response)
         clear_refresh_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -210,6 +227,7 @@ async def rotate_refresh_token_handler(
     if not db_user.email_verified:
         await revoke_token_and_descendants(session, rt)
         await session.commit()
+        clear_access_cookie(response)
         clear_refresh_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -221,6 +239,11 @@ async def rotate_refresh_token_handler(
         )
 
     access_token = create_access_token({"sub": db_user.email})
+    set_access_cookie(
+        response,
+        access_token,
+        max_age=int(timedelta(minutes=AUTH_ACCESS_TOKEN_EXPIRE_MINUTES).total_seconds()),
+    )
     set_refresh_cookie(response, new_plain, new_rt.expires_at)
 
     return Token(access_token=access_token, token_type="bearer", refresh_token=None)
@@ -243,6 +266,7 @@ async def logout_handler(
     except Exception:
         await session.rollback()
     finally:
+        clear_access_cookie(response)
         clear_refresh_cookie(response)
 
     response.status_code = 204

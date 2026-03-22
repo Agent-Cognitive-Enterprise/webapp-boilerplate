@@ -26,8 +26,10 @@ export const loginUser = async (credentials: LoginCredentials): Promise<LoginRes
     return response.data;
 };
 
-export async function fetchUserProfile(): Promise<UserProfile> {
-    const resp = await api.get("/users/me/");
+export async function fetchUserProfile(
+    options?: Pick<ExtendedAxiosRequestConfig, "skipAuthRefresh">
+): Promise<UserProfile> {
+    const resp = await api.get("/users/me/", options as ExtendedAxiosRequestConfig | undefined);
     const raw = resp.data;
     const resolvedIsAdmin =
         typeof raw?.is_admin === "boolean"
@@ -46,6 +48,13 @@ export async function fetchUserProfile(): Promise<UserProfile> {
         ...raw,
         is_admin: resolvedIsAdmin,
     };
+}
+
+export async function refreshUserSession(): Promise<void> {
+    await api.post("/auth/refresh", undefined, {
+        skipAuthHeader: true,
+        skipAuthRefresh: true,
+    } as ExtendedAxiosRequestConfig);
 }
 
 export async function registerUser(payload: RegisterPayload): Promise<void> {

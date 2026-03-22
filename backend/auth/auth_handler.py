@@ -1,7 +1,7 @@
 # /auth/auth_handler.py
 
 from jose import jwt, JWTError
-from fastapi import Depends, APIRouter, HTTPException, status
+from fastapi import Depends, APIRouter, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta, timezone
 from pydantic import EmailStr, ValidationError
@@ -10,11 +10,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from crud.user import get_by_email as get_user_by_email
 from models.token_data import TokenData
 from models.user import User
-from settings import AUTH_SECRET_KEY, AUTH_ALGORITHM, AUTH_ACCESS_TOKEN_EXPIRE_MINUTES
+from settings import (
+    AUTH_SECRET_KEY,
+    AUTH_ALGORITHM,
+    AUTH_ACCESS_TOKEN_EXPIRE_MINUTES,
+    COOKIE_ACCESS_NAME,
+)
 from utils.db import get_session
 from utils.password import verify_password
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token", auto_error=False)
 
 router = APIRouter()
 
@@ -40,11 +45,15 @@ async def authenticate_user(
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=AUTH_ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
+    expire = access_token_expiry(expires_delta)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, AUTH_SECRET_KEY, algorithm=AUTH_ALGORITHM)
+
+
+def access_token_expiry(expires_delta: timedelta | None = None) -> datetime:
+    return datetime.now(timezone.utc) + (
+        expires_delta or timedelta(minutes=AUTH_ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
 
 
 def get_credentials_exception():
@@ -56,12 +65,20 @@ def get_credentials_exception():
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    request: Request,
+    token: str | None = Depends(oauth2_scheme),
     session: AsyncSession = Depends(get_session),
 ):
+    resolved_token = token or request.cookies.get(COOKIE_ACCESS_NAME)
+    if not resolved_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     try:
-        payload = jwt.decode(token, AUTH_SECRET_KEY, algorithms=[AUTH_ALGORITHM])
+        payload = jwt.decode(resolved_token, AUTH_SECRET_KEY, algorithms=[AUTH_ALGORITHM])
         email = payload.get("sub")
         if not isinstance(email, str):
             raise get_credentials_exception()

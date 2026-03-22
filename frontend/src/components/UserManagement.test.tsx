@@ -72,9 +72,7 @@ describe('UserManagement Component', () => {
     });
 
     await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith('/users', {
-        headers: { Authorization: 'Bearer token-123' },
-      });
+      expect(api.get).toHaveBeenCalledWith('/users');
     });
 
     expect(screen.getByText('user1@example.com')).toBeInTheDocument();
@@ -119,11 +117,7 @@ describe('UserManagement Component', () => {
     fireEvent.click(deactivateButton);
 
     await waitFor(() => {
-      expect(api.put).toHaveBeenCalledWith(
-        '/users/u1',
-        { is_active: false },
-        { headers: { Authorization: 'Bearer token-123' } }
-      );
+      expect(api.put).toHaveBeenCalledWith('/users/u1', { is_active: false });
     });
 
     await waitFor(() => {
@@ -164,16 +158,12 @@ describe('UserManagement Component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'user_management.button.create_user' }));
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith(
-        '/users',
-        {
-          full_name: 'New User',
-          email: 'newuser@example.com',
-          password: 'StrongPass123!',
-          is_admin: false,
-        },
-        { headers: { Authorization: 'Bearer token-123' } }
-      );
+      expect(api.post).toHaveBeenCalledWith('/users', {
+        full_name: 'New User',
+        email: 'newuser@example.com',
+        password: 'StrongPass123!',
+        is_admin: false,
+      });
     });
 
     expect(screen.getByText('newuser@example.com')).toBeInTheDocument();
@@ -203,9 +193,7 @@ describe('UserManagement Component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'user_management.action.delete' }));
 
     await waitFor(() => {
-      expect(api.delete).toHaveBeenCalledWith('/users/u1', {
-        headers: { Authorization: 'Bearer token-123' },
-      });
+      expect(api.delete).toHaveBeenCalledWith('/users/u1');
     });
 
     await waitFor(() => {

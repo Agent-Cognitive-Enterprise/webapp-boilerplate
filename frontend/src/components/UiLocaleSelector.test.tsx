@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import UiLocaleSelector from './UiLocaleSelector';
 import api from '../api/api';
 import * as userSettingsApi from '../api/userSettings';
+import { AuthContext } from '../contexts/AuthContext.tsx';
 
 vi.mock('../api/api');
 
@@ -34,11 +35,34 @@ describe('UiLocaleSelector Component', () => {
     vi.restoreAllMocks();
   });
 
+  function renderSelector(token: string | null = null) {
+    return render(
+      <AuthContext.Provider
+        value={{
+          token,
+          user: token ? {
+            id: 'user-1',
+            full_name: 'Test User',
+            email: 'user@example.com',
+            is_admin: false,
+            is_active: true,
+          } : null,
+          login: vi.fn(),
+          register: vi.fn(),
+          logout: vi.fn(),
+          setToken: vi.fn(),
+        }}
+      >
+        <UiLocaleSelector />
+      </AuthContext.Provider>
+    );
+  }
+
   it('loads locales and opens modal with fetched data', async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { data: ['en', 'fr'] } } as any);
     localStorage.setItem('uiLocale', 'en');
 
-    render(<UiLocaleSelector />);
+    renderSelector();
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith(
@@ -58,7 +82,7 @@ describe('UiLocaleSelector Component', () => {
   it('stores selected locale and reloads page', async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { data: ['en', 'fr'] } } as any);
 
-    render(<UiLocaleSelector />);
+    renderSelector();
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalled();
@@ -74,9 +98,8 @@ describe('UiLocaleSelector Component', () => {
   it('persists selected locale through user settings when authenticated', async () => {
     const saveSpy = vi.spyOn(userSettingsApi, 'setSavedUiLocalePreference').mockResolvedValue('fr');
     vi.mocked(api.post).mockResolvedValue({ data: { data: ['en', 'fr'] } } as any);
-    localStorage.setItem('token', 'token-123');
 
-    render(<UiLocaleSelector />);
+    renderSelector('cookie-session');
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalled();
@@ -96,7 +119,7 @@ describe('UiLocaleSelector Component', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(api.post).mockRejectedValue(new Error('network error'));
 
-    render(<UiLocaleSelector />);
+    renderSelector();
 
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalled();

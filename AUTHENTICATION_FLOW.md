@@ -53,14 +53,15 @@
    - Client IP + User-Agent (fingerprint)
    - Expiry date
 5. Backend returns:
-   - Access token in response body
+   - Access token in response body for non-browser/API clients
+   - Access token in HttpOnly cookie for browser sessions
    - Refresh token in HttpOnly cookie
-6. Frontend stores access token in localStorage
+6. Frontend treats the browser session as cookie-backed and derives auth state from `/users/me/`
 7. User redirected to dashboard
 
 ## Authenticated Requests
-1. Frontend sends access token in `Authorization: Bearer <token>` header
-2. Backend validates JWT signature and expiry
+1. Browser frontend sends authenticated requests with cookies (`withCredentials: true`)
+2. Backend validates the access JWT from the `Authorization` header or access-token cookie
 3. Backend extracts user ID from token
 4. Backend processes request with user context
 
@@ -73,20 +74,19 @@
    - Checks token not revoked or expired
    - Validates client fingerprint matches
    - **Rotates token** (marks old as used, generates new)
-4. Backend returns new access token + new refresh token
-5. Frontend updates access token in localStorage
-6. Frontend retries original request
+4. Backend rotates both browser cookies and returns a new access token in the response body for non-browser/API clients
+5. Frontend retries the original request after refresh succeeds
 
 ## Logout
 1. User clicks logout button
-2. Frontend calls `/auth/logout` endpoint (with access token)
+2. Frontend calls `/auth/logout` endpoint
 3. Backend:
    - Extracts refresh token from cookie
    - Marks refresh token as revoked
    - **Revokes all descendant tokens** (from token rotation chain)
+   - Clears access token cookie
    - Clears refresh token cookie
 4. Frontend:
-   - Removes access token from localStorage
    - Clears user state
    - Redirects to login page
 
@@ -118,18 +118,19 @@
 
 | Token Type | Storage Location | Lifespan | Purpose |
 |------------|-----------------|----------|---------|
-| Access Token | localStorage | 15 min | API authentication |
+| Access Token | HttpOnly Cookie (browser) / response body (API clients) | 15 min | API authentication |
 | Refresh Token | HttpOnly Cookie | 7 days | Get new access tokens |
 
 **Why this approach?**
-- Access tokens in localStorage: Convenient for API calls, short-lived reduces risk
-- Refresh tokens in HttpOnly cookies: Protected from XSS, longer-lived but more secure
+- Browser JavaScript does not need direct access to bearer tokens
+- HttpOnly cookies keep both session tokens out of `localStorage`
+- Header-based bearer tokens still work for non-browser clients and tests
 
 ## Security Considerations
 
 ### What if access token is stolen?
 - Limited damage: Expires in 15 minutes
-- Attacker can't get refresh token (HttpOnly cookie)
+- Browser JavaScript cannot read the token cookie directly
 - User can logout to revoke all sessions
 
 ### What if refresh token is stolen?
@@ -138,12 +139,13 @@
 - Token rotation limits replay attacks
 
 ### What about XSS attacks?
-- Access token in localStorage is vulnerable
-- But short lifespan limits exposure
-- Refresh token safe in HttpOnly cookie
+- Session cookies are `HttpOnly`, so browser JavaScript cannot directly exfiltrate them
+- XSS is still dangerous because it can issue authenticated requests from the page context
+- A strict CSP and other browser hardening remain important
 
 ### What about CSRF attacks?
-- Refresh endpoint validates an HttpOnly refresh cookie plus token hash/fingerprint checks
+- Browser auth relies on cookies, so state-changing requests need CSRF mitigation
+- SameSite=Lax reduces ambient cross-site requests but is not a complete CSRF defense
 - SameSite=Lax on cookies
 - Explicit origin checking via CORS
 

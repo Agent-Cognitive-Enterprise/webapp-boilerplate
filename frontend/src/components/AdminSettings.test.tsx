@@ -23,6 +23,7 @@ function renderAdminSettings(isAdmin: boolean) {
     const authValue = {
         token: "token-123",
         user: {is_admin: isAdmin},
+        isLoading: false,
         login: vi.fn(),
         register: vi.fn(),
         logout: vi.fn(),
@@ -136,6 +137,7 @@ describe("AdminSettings", () => {
         const nonAdminAuthValue = {
             token: "token-123",
             user: null,
+            isLoading: true,
             login: vi.fn(),
             register: vi.fn(),
             logout: vi.fn(),
@@ -143,6 +145,7 @@ describe("AdminSettings", () => {
         };
         const adminAuthValue = {
             ...nonAdminAuthValue,
+            isLoading: false,
             user: {is_admin: true},
         };
 
@@ -196,6 +199,7 @@ describe("AdminSettings", () => {
         const loadingAuthValue = {
             token: "token-123",
             user: null,
+            isLoading: true,
             login: vi.fn(),
             register: vi.fn(),
             logout: vi.fn(),
@@ -203,6 +207,7 @@ describe("AdminSettings", () => {
         };
         const adminAuthValue = {
             ...loadingAuthValue,
+            isLoading: false,
             user: {is_admin: true},
         };
 

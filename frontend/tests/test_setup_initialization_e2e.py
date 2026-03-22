@@ -10,7 +10,6 @@ from backend.tests.test_env import TEST_INITIAL_SETUP_TOKEN
 from frontend.tests.conftest import FAST_API_BASE_URL, FRONTEND_BASE_URL
 from frontend.tests.state_helpers import (
     SeedUser,
-    create_test_access_token,
     read_system_settings,
     reset_uninitialized_state,
     seed_initialized_state,
@@ -32,10 +31,8 @@ def _login(page, email: str, password: str) -> None:
 
 
 def _authenticate_as_seeded_user(page, email: str, password: str) -> None:
-    del password
-    token = create_test_access_token(email)
-    page.goto(f"{FRONTEND_BASE_URL}/login")
-    page.evaluate("(value) => window.localStorage.setItem('token', value)", token)
+    _login(page, email, password)
+    expect(page).to_have_url(re.compile(".*/dashboard$"))
 
 
 def _complete_setup_and_reach_login(page) -> None:

@@ -22,6 +22,7 @@ from api.ui_label_handlers import SuggestActionInput
 from api.ui_label_models import UILabelRequest
 from api.ui_label_models import UILabelResponse
 from auth.auth_handler import get_current_user, oauth2_scheme
+from settings import COOKIE_ACCESS_NAME
 from crud.ui_label import create as create_label
 from crud.ui_label import get_by_key_locale
 from crud.ui_label import get_list_by_locale
@@ -72,7 +73,7 @@ async def ui_label_post(
     request: Request,
     request_body: UILabelRequest,
     session: AsyncSession = Depends(get_session),
-    token: str = Depends(oauth2_scheme),
+    token: str | None = Depends(oauth2_scheme),
 ):
     action = request_body.action.lower()
 
@@ -109,7 +110,7 @@ async def ui_label_post(
             request=request,
             session=session,
             action_input=SuggestActionInput(
-                token=token,
+                token=token or request.cookies.get(COOKIE_ACCESS_NAME),
                 locale=locale,
                 key=request_body.key,
                 value=request_body.value,

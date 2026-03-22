@@ -2,10 +2,8 @@
 
 import axios from "axios";
 import type {AxiosError, AxiosResponse} from "axios";
-import {AxiosHeaders} from "axios";
 import { notifySessionInvalidated } from "../auth/sessionEvents.ts";
-import { clearAccessToken, getAccessToken, setAccessToken } from "../auth/tokenStore.ts";
-import type {ExtendedAxiosRequestConfig, RefreshResponse} from "./types";
+import type {ExtendedAxiosRequestConfig } from "./types";
 
 // Clear the one-shot reload flag if present (prevents reload loops)
 if (typeof window !== "undefined") {
@@ -24,9 +22,9 @@ const api = axios.create({
 });
 
 let isRefreshing = false;
-let refreshPromise: Promise<string> | null = null;
+let refreshPromise: Promise<void> | null = null;
 
-let successSubs: Array<(token: string) => void> = [];
+let successSubs: Array<() => void> = [];
 let errorSubs: Array<(err: unknown) => void> = [];
 
 // Track backend connectivity state
@@ -37,15 +35,15 @@ function shouldReloadAfterBackendRestore(method: string | undefined): boolean {
     return normalized === "get" || normalized === "head" || normalized === "options";
 }
 
-function subscribeTokenRefresh(onSuccess: (token: string) => void, onError: (err: unknown) => void) {
+function subscribeTokenRefresh(onSuccess: () => void, onError: (err: unknown) => void) {
     successSubs.push(onSuccess);
     errorSubs.push(onError);
 }
 
-function notifySubscribersSuccess(token: string) {
+function notifySubscribersSuccess() {
     successSubs.forEach(cb => {
         try {
-            cb(token);
+            cb();
         } catch {
             // Intentionally empty
         }
@@ -65,19 +63,6 @@ function notifySubscribersError(err: unknown) {
     successSubs = [];
     errorSubs = [];
 }
-
-// ----------------------
-// Request interceptor
-// ----------------------
-api.interceptors.request.use((config) => {
-    const cfg = config as ExtendedAxiosRequestConfig;
-    if (!cfg.headers) cfg.headers = new AxiosHeaders();
-    if (!cfg.skipAuthHeader) {
-        const token = getAccessToken();
-        if (token) (cfg.headers as Record<string, string>).Authorization = `Bearer ${token}`;
-    }
-    return cfg;
-});
 
 // ----------------------
 // Response interceptor: auto-refresh and backend restore detection
@@ -124,11 +109,10 @@ api.interceptors.response.use(
             if (isRefreshing && refreshPromise) {
                 return new Promise((resolve, reject) => {
                     subscribeTokenRefresh(
-                        newToken => {
+                        () => {
                             const retryConfig: ExtendedAxiosRequestConfig = {
                                 ...original,
                                 _retry: true,
-                                headers: new AxiosHeaders({...(original.headers || {}), Authorization: `Bearer ${newToken}`}),
                             };
                             resolve(api.request(retryConfig));
                         },
@@ -140,28 +124,22 @@ api.interceptors.response.use(
             // Start refresh
             isRefreshing = true;
             refreshPromise = (async () => {
-                const resp = await api.post("/auth/refresh", undefined, {
+                await api.post("/auth/refresh", undefined, {
                     skipAuthHeader: true,
                     skipAuthRefresh: true,
                 } as ExtendedAxiosRequestConfig);
-                const newToken = (resp.data as RefreshResponse)?.access_token;
-                if (typeof newToken !== "string") throw new Error("Invalid refresh token");
-                setAccessToken(newToken);
-                notifySubscribersSuccess(newToken);
-                return newToken;
+                notifySubscribersSuccess();
             })();
 
             try {
-                const newToken = await refreshPromise;
+                await refreshPromise;
                 const retryConfig: ExtendedAxiosRequestConfig = {
                     ...original,
                     _retry: true,
-                    headers: new AxiosHeaders({...(original.headers || {}), Authorization: `Bearer ${newToken}`}),
                 };
                 return api.request(retryConfig);
             } catch (refreshErr) {
                 notifySubscribersError(refreshErr);
-                clearAccessToken();
                 notifySessionInvalidated("refresh_failed");
                 return Promise.reject(refreshErr);
             } finally {

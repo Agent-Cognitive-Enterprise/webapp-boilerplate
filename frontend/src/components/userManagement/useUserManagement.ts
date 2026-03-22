@@ -31,9 +31,7 @@ export function useUserManagement(authToken: string | null, isAdmin: boolean) {
         const fetchUsers = async () => {
             try {
                 setLoading(true);
-                const response = await api.get("/users", {
-                    headers: {Authorization: `Bearer ${authToken}`},
-                });
+                const response = await api.get("/users");
                 setUsers(response.data);
                 setErrorKey(null);
                 setTableMessageKey(response.data.length === 0 ? "user_management.message.no_users_found" : null);
@@ -66,7 +64,6 @@ export function useUserManagement(authToken: string | null, isAdmin: boolean) {
             await api.put(
                 `/users/${userId}`,
                 {is_active: !currentStatus},
-                {headers: {Authorization: `Bearer ${authToken}`}},
             );
             setUsers((currentUsers) => currentUsers.map((user) => (
                 user.id === userId ? {...user, is_active: !currentStatus} : user
@@ -82,9 +79,7 @@ export function useUserManagement(authToken: string | null, isAdmin: boolean) {
         setErrorKey(null);
         setCreating(true);
         try {
-            const response = await api.post("/users", newUser, {
-                headers: {Authorization: `Bearer ${authToken}`},
-            });
+            const response = await api.post("/users", newUser);
             setUsers((currentUsers) => [response.data, ...currentUsers]);
             setNewUser(EMPTY_NEW_USER);
             setTableMessageKey(null);
@@ -99,9 +94,7 @@ export function useUserManagement(authToken: string | null, isAdmin: boolean) {
     const deleteUser = async (userId: string) => {
         setErrorKey(null);
         try {
-            await api.delete(`/users/${userId}`, {
-                headers: {Authorization: `Bearer ${authToken}`},
-            });
+            await api.delete(`/users/${userId}`);
             setUsers((currentUsers) => currentUsers.filter((user) => user.id !== userId));
         } catch (err) {
             console.error("Error deleting user:", err);
