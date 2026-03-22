@@ -7,6 +7,8 @@ import api.auth as auth_api
 from settings import AUTH_FRONTEND_BASE_URL
 from tests.e2e.test_setup_e2e import initialize_application
 
+TRUSTED_ORIGIN = {"Origin": "http://localhost:5173"}
+
 
 @pytest.mark.asyncio
 async def test_email_verification_lifecycle_end_to_end(
@@ -54,6 +56,7 @@ async def test_email_verification_lifecycle_end_to_end(
             "email": "verify-e2e@example.com",
             "password": "NeedsVerify123!",
         },
+        headers=TRUSTED_ORIGIN,
     )
     assert register_response.status_code == 200
     assert register_response.json()["email_verified"] is False
@@ -61,7 +64,10 @@ async def test_email_verification_lifecycle_end_to_end(
     login_before_verify = await e2e_client.post(
         "/auth/token",
         data={"username": "verify-e2e@example.com", "password": "NeedsVerify123!"},
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        headers={
+            **TRUSTED_ORIGIN,
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
     )
     assert login_before_verify.status_code == 403
     assert login_before_verify.json()["detail"] == "Email verification required"
@@ -79,7 +85,10 @@ async def test_email_verification_lifecycle_end_to_end(
     login_after_verify = await e2e_client.post(
         "/auth/token",
         data={"username": "verify-e2e@example.com", "password": "NeedsVerify123!"},
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        headers={
+            **TRUSTED_ORIGIN,
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
     )
     assert login_after_verify.status_code == 200
 

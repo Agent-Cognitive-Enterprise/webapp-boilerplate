@@ -285,9 +285,11 @@ async def test_reset_password_revokes_existing_refresh_sessions(
             "token": plain_token,
             "new_password": "BrandNew@Pass456",
         },
+        headers=TRUSTED_ORIGIN,
     )
     assert reset_response.status_code == 200
 
     client.cookies.set(COOKIE_REFRESH_NAME, refresh_cookie)
-    refresh_response = await client.post("/auth/refresh")
+    refresh_response = await client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
     assert refresh_response.status_code == 401
+TRUSTED_ORIGIN = {"Origin": "http://localhost:5173"}

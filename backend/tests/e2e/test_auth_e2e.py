@@ -8,6 +8,9 @@ from settings import COOKIE_REFRESH_NAME
 from tests.e2e.test_setup_e2e import initialize_application
 
 
+TRUSTED_ORIGIN = {"Origin": "http://localhost:5173"}
+
+
 @pytest.mark.asyncio
 async def test_auth_session_lifecycle_end_to_end(e2e_client: AsyncClient) -> None:
     await initialize_application(e2e_client)
@@ -38,14 +41,14 @@ async def test_auth_session_lifecycle_end_to_end(e2e_client: AsyncClient) -> Non
     assert me_response.status_code == 200
     assert me_response.json()["email"] == "e2e-user@example.com"
 
-    refresh_response = await e2e_client.post("/auth/refresh")
+    refresh_response = await e2e_client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
     assert refresh_response.status_code == 200
     assert refresh_response.json()["access_token"]
 
-    logout_response = await e2e_client.post("/auth/logout")
+    logout_response = await e2e_client.post("/auth/logout", headers=TRUSTED_ORIGIN)
     assert logout_response.status_code == 204
 
-    refresh_after_logout = await e2e_client.post("/auth/refresh")
+    refresh_after_logout = await e2e_client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
     assert refresh_after_logout.status_code == 401
     assert refresh_after_logout.json()["detail"] == "Missing refresh token"
 

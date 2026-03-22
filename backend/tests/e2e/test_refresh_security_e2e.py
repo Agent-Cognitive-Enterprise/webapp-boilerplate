@@ -7,6 +7,9 @@ from settings import COOKIE_REFRESH_NAME
 from tests.e2e.test_setup_e2e import initialize_application
 
 
+TRUSTED_ORIGIN = {"Origin": "http://localhost:5173"}
+
+
 def extract_refresh_cookie(set_cookie_header: str | None) -> str:
     assert set_cookie_header is not None
     parsed = SimpleCookie()
@@ -38,19 +41,19 @@ async def test_refresh_token_rotation_reuse_detection_end_to_end(e2e_client: Asy
     assert login_response.status_code == 200
     refresh_token_1 = extract_refresh_cookie(login_response.headers.get("set-cookie"))
 
-    refresh_response = await e2e_client.post("/auth/refresh")
+    refresh_response = await e2e_client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
     assert refresh_response.status_code == 200
     refresh_token_2 = extract_refresh_cookie(refresh_response.headers.get("set-cookie"))
     assert refresh_token_2 != refresh_token_1
 
     # Replay old token: should be rejected and revoke descendants.
     e2e_client.cookies.set(COOKIE_REFRESH_NAME, refresh_token_1)
-    replay_response = await e2e_client.post("/auth/refresh")
+    replay_response = await e2e_client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
     assert replay_response.status_code == 401
     assert replay_response.json()["detail"] == "Invalid refresh token"
 
     # The descendant token should now also be revoked after reuse detection.
     e2e_client.cookies.set(COOKIE_REFRESH_NAME, refresh_token_2)
-    descendant_response = await e2e_client.post("/auth/refresh")
+    descendant_response = await e2e_client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
     assert descendant_response.status_code == 401
     assert descendant_response.json()["detail"] == "Invalid refresh token"

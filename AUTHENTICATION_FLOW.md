@@ -146,6 +146,7 @@
 ### What about CSRF attacks?
 - Browser auth relies on cookies, so state-changing requests need CSRF mitigation
 - SameSite=Lax reduces ambient cross-site requests but is not a complete CSRF defense
+- Unsafe cookie-authenticated requests are rejected unless `Origin` or `Referer` matches a trusted frontend/backend origin
 - SameSite=Lax on cookies
 - Explicit origin checking via CORS
 

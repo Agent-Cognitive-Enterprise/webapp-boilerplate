@@ -20,6 +20,7 @@ test_email = "test.user@example.net"
 test_password = "$ecurepAssw0rd"
 # noinspection SpellCheckingInspection
 wrong_password = "wrongpassword"
+TRUSTED_ORIGIN = {"Origin": "http://localhost:5173"}
 
 
 @pytest.mark.asyncio
@@ -368,7 +369,7 @@ async def test_token_missing_required_fields(
 
 @pytest.mark.asyncio
 async def test_refresh_missing_cookie(client: AsyncClient):
-    response = await client.post("/auth/refresh")
+    response = await client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
 
     assert response.status_code == 401
 
@@ -385,7 +386,7 @@ async def test_refresh_invalid_token(
 ):
     # An invalid token: set a cookie value that doesn't exist in db
     client.cookies.set(COOKIE_REFRESH_NAME, "notavalidtokenatall")
-    response = await client.post("/auth/refresh")
+    response = await client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
 
     assert response.status_code == 401
 
@@ -427,7 +428,7 @@ async def test_refresh_revoked_token(
     await mark_used_and_revoke(session, rt)
     await session.commit()
 
-    response = await client.post("/auth/refresh")
+    response = await client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
 
     assert response.status_code == 401
 
@@ -473,7 +474,7 @@ async def test_refresh_expired_token(
 
     await session.commit()
 
-    response = await client.post("/auth/refresh")
+    response = await client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
 
     assert response.status_code == 401
 
@@ -523,7 +524,7 @@ async def test_refresh_token_success(
     )
 
     # Step 3: Use refresh endpoint to get new tokens
-    refresh_resp = await client.post("/auth/refresh")
+    refresh_resp = await client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
 
     assert refresh_resp.status_code == 200
 
@@ -572,6 +573,7 @@ async def test_refresh_fingerprint_mismatch(
     mismatch_response = await client.post(
         "/auth/refresh",
         headers={
+            **TRUSTED_ORIGIN,
             "user-agent": "agent-b",
             "x-forwarded-for": "198.51.100.21",
         },
@@ -618,7 +620,7 @@ async def test_refresh_token_rotation(
     )
 
     # Step 3: First refresh (rotates the token)
-    resp_refresh = await client.post("/auth/refresh")
+    resp_refresh = await client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
 
     assert resp_refresh.status_code == 200
 
@@ -644,7 +646,7 @@ async def test_refresh_token_rotation(
         COOKIE_REFRESH_NAME,
         old_refresh_token,
     )
-    invalid_refresh = await client.post("/auth/refresh")
+    invalid_refresh = await client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
 
     assert (
         invalid_refresh.status_code == 401
@@ -656,7 +658,7 @@ async def test_refresh_token_rotation(
         COOKIE_REFRESH_NAME,
         new_refresh_token,
     )
-    second_refresh = await client.post("/auth/refresh")
+    second_refresh = await client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
 
     assert second_refresh.status_code == 401
     assert second_refresh.json()["detail"] == "Invalid refresh token"
@@ -700,7 +702,7 @@ async def test_logout_clears_cookie_and_revokes_token(
     )
 
     # Act: Call logout with cookie present
-    logout_response = await client.post("/auth/logout")
+    logout_response = await client.post("/auth/logout", headers=TRUSTED_ORIGIN)
 
     # Assert: Should always return 204 No Content
     assert logout_response.status_code == 204
@@ -715,7 +717,7 @@ async def test_logout_clears_cookie_and_revokes_token(
         COOKIE_REFRESH_NAME,
         refresh_token,
     )
-    post_logout_refresh = await client.post("/auth/refresh")
+    post_logout_refresh = await client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
 
     assert post_logout_refresh.status_code == 401
 
@@ -725,7 +727,7 @@ async def test_logout_without_cookie_is_idempotent(client: AsyncClient):
     # No refresh token cookie set
     if COOKIE_REFRESH_NAME in client.cookies:
         client.cookies.clear(COOKIE_REFRESH_NAME)
-    response = await client.post("/auth/logout")
+    response = await client.post("/auth/logout", headers=TRUSTED_ORIGIN)
 
     assert response.status_code == 204
 
@@ -740,7 +742,7 @@ async def test_logout_without_cookie_is_idempotent(client: AsyncClient):
 async def test_logout_with_invalid_token_cookie(client: AsyncClient):
     # Set an obviously invalid refresh token string
     client.cookies.set(COOKIE_REFRESH_NAME, "notavalidtoken")
-    response = await client.post("/auth/logout")
+    response = await client.post("/auth/logout", headers=TRUSTED_ORIGIN)
 
     assert response.status_code == 204
 

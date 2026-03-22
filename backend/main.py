@@ -16,6 +16,7 @@ from api.user_settings import router as user_settings_router
 from api.ui_label import router as ui_label_router
 from api.setup import router as setup_router
 from api.admin_settings import router as admin_settings_router
+from security.csrf import csrf_protect_cookie_auth
 from services.bootstrap import is_initialized
 from settings import CORS_ALLOW_ORIGINS
 from utils.db import get_session
@@ -111,6 +112,11 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
     return response
+
+
+@app.middleware("http")
+async def csrf_guard(request: Request, call_next):
+    return await csrf_protect_cookie_auth(request, call_next)
 
 
 app.add_middleware(

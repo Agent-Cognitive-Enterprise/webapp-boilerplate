@@ -3,6 +3,8 @@ from httpx import AsyncClient
 
 from tests.e2e.test_setup_e2e import initialize_application
 
+TRUSTED_ORIGIN = {"Origin": "http://localhost:5173"}
+
 
 @pytest.mark.asyncio
 async def test_admin_settings_update_lifecycle_end_to_end(e2e_client: AsyncClient) -> None:
@@ -58,14 +60,20 @@ async def test_admin_settings_update_lifecycle_end_to_end(e2e_client: AsyncClien
     old_admin_login = await e2e_client.post(
         "/auth/token",
         data={"username": "admin-e2e@example.com", "password": "StrongAdminPass123!"},
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        headers={
+            **TRUSTED_ORIGIN,
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
     )
     assert old_admin_login.status_code == 401
 
     new_admin_login = await e2e_client.post(
         "/auth/token",
         data={"username": "admin-updated@example.com", "password": "NewStrongAdminPass123!"},
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        headers={
+            **TRUSTED_ORIGIN,
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
     )
     assert new_admin_login.status_code == 200
 

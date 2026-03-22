@@ -1,7 +1,7 @@
 # HANDOFF
 
 ## Current objective
-Keep CI stable while finishing the browser auth migration away from `localStorage` bearer tokens and ensuring docs/tests match the cookie-backed session model.
+Cookie-backed browser auth and CSRF protection are implemented. Keep CI stable and move to the next security hardening step without regressing the verified session model.
 
 ## Completed in this session
 - Switched browser auth from `localStorage` bearer tokens to a cookie-backed session model.
@@ -10,12 +10,16 @@ Keep CI stable while finishing the browser auth migration away from `localStorag
 - Updated admin settings and user management flows to stop depending on JS-readable access tokens.
 - Updated frontend unit tests and browser tests, including replacing the old Playwright `localStorage` auth shortcut with a real login flow.
 - Updated auth documentation to describe cookie-backed browser sessions instead of `localStorage` token storage.
+- Added server-side CSRF protection for unsafe cookie-authenticated requests using trusted `Origin`/`Referer` validation.
+- Added focused backend regression coverage in `backend/tests/api/test_csrf.py`.
+- Updated backend auth, password-reset, and e2e tests so cookie-authenticated requests include a trusted browser origin when they are intended to exercise endpoint logic beyond the CSRF gate.
+- Re-ran the full backend suite, frontend unit tests, frontend lint/build, and full Playwright browser suite successfully after the CSRF change.
 
 ## Current status
-Cookie-backed browser auth is implemented across backend and frontend. The old `frontend/src/auth/tokenStore.ts` is gone, browser requests rely on cookies with `withCredentials`, session restore happens through `/users/me/` and `/auth/refresh`, and the stale Playwright helper that wrote a token into `localStorage` has been removed. Full verification still needs one final rerun from this state before marking the task complete.
+Browser auth is cookie-backed and no longer depends on `localStorage` bearer tokens. Unsafe requests that rely on auth cookies now require a trusted `Origin` or `Referer`, while bearer-header API clients still work without CSRF checks. Verification is green from the current tree: backend `173` tests passed, frontend `139` Vitest tests passed, frontend lint/build passed, and browser `19` tests passed.
 
 ## Next step
-Run the full verification path from the updated tree: `make verify-backend`, `cd frontend && npm test && npm run lint && npm run build`, and `PYTHONPATH=. backend/.venv/bin/pytest frontend/tests -q`. If green, close out the task and then tackle CSRF protection for cookie-authenticated browser requests.
+Next meaningful step is stricter browser hardening: add a production CSP and document any inline/script/style exceptions explicitly, then verify the frontend still functions under that policy.
 
 ## Important files
 - AGENTS.md
@@ -26,14 +30,16 @@ Run the full verification path from the updated tree: `make verify-backend`, `cd
 - backend/auth/auth_handler.py
 - backend/api/auth_sessions.py
 - backend/auth/cookies.py
+- backend/security/csrf.py
 - frontend/src/api/api.ts
 - frontend/src/api/auth.ts
 - frontend/src/contexts/AuthContext.tsx
 - frontend/src/components/adminSettings/useAdminSettingsForm.ts
 - frontend/tests/test_setup_initialization_e2e.py
+- backend/tests/api/test_csrf.py
 
 ## Notes for next session
-The important behavioral change is that browser auth no longer survives by writing a JWT into `localStorage`; tests or helpers must create a real session via login or cookies. Header-based bearer auth still exists on the backend for non-browser clients and existing API-style tests. The next security gap after this migration is CSRF: browser auth is now cookie-driven, so unsafe endpoints should get explicit CSRF mitigation rather than relying only on SameSite/CORS. Browser pytest still needs to run serially because `frontend/tests/conftest.py` shares `frontend_e2e.db`.
+The important behavioral changes are: browser auth no longer survives by writing a JWT into `localStorage`, and unsafe cookie-authenticated requests now need a trusted `Origin` or `Referer`. Tests or helpers that use real cookies must model browser origins when exercising refresh/logout or other unsafe endpoints. Header-based bearer auth still exists for non-browser clients and API-style tests. Browser pytest still needs to run serially because `frontend/tests/conftest.py` shares `frontend_e2e.db`.
 
 ## Last updated
-2026-03-22 23:22 UTC
+2026-03-22 23:34 UTC

@@ -3,6 +3,8 @@ from httpx import AsyncClient
 
 from tests.e2e.test_setup_e2e import initialize_application
 
+TRUSTED_ORIGIN = {"Origin": "http://localhost:5173"}
+
 
 @pytest.mark.asyncio
 async def test_admin_user_management_lifecycle_end_to_end(e2e_client: AsyncClient) -> None:
@@ -48,7 +50,10 @@ async def test_admin_user_management_lifecycle_end_to_end(e2e_client: AsyncClien
     managed_login_response = await e2e_client.post(
         "/auth/token",
         data={"username": "managed-e2e@example.com", "password": "ManagedPass123!"},
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        headers={
+            **TRUSTED_ORIGIN,
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
     )
     assert managed_login_response.status_code == 401
 
