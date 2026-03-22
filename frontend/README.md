@@ -266,6 +266,7 @@ Labels are:
 ✅ **Implemented:**
 - Cookie-backed browser sessions with HttpOnly access and refresh tokens
 - Server-side CSRF protection for unsafe cookie-authenticated requests via trusted `Origin`/`Referer` validation
+- Backend CSP headers for API responses and backend-served verification HTML
 - Automatic token refresh
 - Proper logout with backend notification
 - Protected routes with RequireAuth wrapper

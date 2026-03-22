@@ -247,6 +247,8 @@ For full auth behavior and security flow details, see [AUTHENTICATION_FLOW.md](A
 - Review [SECURITY.md](SECURITY.md) for policy and reporting guidance.
 - Never commit secrets (`.env`, API keys, SMTP passwords).
 - In production, set `COOKIE_SECURE=true` and use HTTPS.
+- Backend responses now include a CSP. The backend-served email-verification feedback page uses a slightly looser inline-script/style CSP than the default API/header policy.
+- This repository does not serve the Vite frontend from FastAPI in production, so deploy the same CSP intent at the frontend host or reverse proxy as well.
 - Repository automation included:
   - CI: `.github/workflows/ci.yml`
   - CodeQL: `.github/workflows/codeql.yml`

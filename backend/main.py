@@ -16,6 +16,7 @@ from api.user_settings import router as user_settings_router
 from api.ui_label import router as ui_label_router
 from api.setup import router as setup_router
 from api.admin_settings import router as admin_settings_router
+from security.csp import resolve_csp_header
 from security.csrf import csrf_protect_cookie_auth
 from services.bootstrap import is_initialized
 from settings import CORS_ALLOW_ORIGINS
@@ -110,6 +111,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = resolve_csp_header(request, response)
 
     return response
 
