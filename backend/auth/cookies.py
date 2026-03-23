@@ -26,6 +26,24 @@ def set_access_cookie(response: Response, token: str, max_age: int):
     )
 
 
+def set_session_binding_cookie(response: Response, token: str, max_age: int):
+    same_site = cast(
+        Literal["lax", "strict", "none"] | None,
+        settings.COOKIE_SAME_SITE,
+    )
+
+    response.set_cookie(
+        key=settings.COOKIE_SESSION_BINDING_NAME,
+        value=token,
+        max_age=max_age,
+        path=settings.COOKIE_PATH,
+        domain=settings.COOKIE_DOMAIN,
+        secure=bool(settings.COOKIE_SECURE),
+        httponly=bool(settings.COOKIE_HTTPONLY),
+        samesite=same_site,
+    )
+
+
 def set_refresh_cookie(response: Response, token: str, expires_at: datetime):
     # Compute Max-Age from the target expiration
     now = datetime.now(timezone.utc)
@@ -61,6 +79,14 @@ def clear_access_cookie(response: Response):
 def clear_refresh_cookie(response: Response):
     response.delete_cookie(
         key=settings.COOKIE_REFRESH_NAME,
+        path=settings.COOKIE_PATH,
+        domain=settings.COOKIE_DOMAIN,
+    )
+
+
+def clear_session_binding_cookie(response: Response):
+    response.delete_cookie(
+        key=settings.COOKIE_SESSION_BINDING_NAME,
         path=settings.COOKIE_PATH,
         domain=settings.COOKIE_DOMAIN,
     )

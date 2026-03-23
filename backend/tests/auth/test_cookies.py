@@ -4,9 +4,10 @@ from datetime import datetime, timedelta, timezone
 from http.cookies import SimpleCookie
 from fastapi import Response
 
-from auth.cookies import set_refresh_cookie
+from auth.cookies import set_refresh_cookie, set_session_binding_cookie
 from settings import (
     COOKIE_REFRESH_NAME,
+    COOKIE_SESSION_BINDING_NAME,
     COOKIE_SECURE,
     COOKIE_SAME_SITE,
     COOKIE_DOMAIN,
@@ -77,3 +78,21 @@ def test_set_refresh_cookie():
         assert (
             morsel["domain"] == COOKIE_DOMAIN
         ), f"Domain mismatch: expected {COOKIE_DOMAIN}, got {morsel['domain']}"
+
+
+def test_set_session_binding_cookie():
+    response = Response()
+    token = "test_session_binding"
+
+    set_session_binding_cookie(response, token, max_age=3600)
+
+    set_cookies = response.headers.getlist("set-cookie")
+    assert set_cookies, "No Set-Cookie headers found"
+
+    morsel = _parse_cookie_from_headers(set_cookies, COOKIE_SESSION_BINDING_NAME)
+    assert morsel is not None, f"Cookie {COOKIE_SESSION_BINDING_NAME} not found in headers"
+
+    assert morsel.value == token
+    assert int(morsel["max-age"]) == 3600
+    assert bool(morsel["httponly"])
+    assert morsel["path"] == COOKIE_PATH

@@ -221,7 +221,7 @@ Set the backend deploy secret `INITIAL_SETUP_TOKEN`, then complete `/setup` in t
 ### Login
 1. User enters email and password
 2. Frontend calls `/auth/token` endpoint
-3. Backend sets access and refresh tokens in HttpOnly cookies for browser sessions
+3. Backend sets access, refresh, and session-binding tokens in HttpOnly cookies for browser sessions
 4. Frontend fetches `/users/me/` to hydrate authenticated user state
 5. User redirected to dashboard
 
@@ -232,7 +232,7 @@ Set the backend deploy secret `INITIAL_SETUP_TOKEN`, then complete `/setup` in t
 ### Token Refresh
 1. When access token expires (401 response)
 2. Axios interceptor automatically calls `/auth/refresh`
-3. Backend validates refresh token from cookie
+3. Backend validates refresh token from cookie and checks the session-binding cookie
 4. Backend rotates the session cookies
 5. Interceptor retries the original request
 
@@ -265,6 +265,7 @@ Labels are:
 
 ✅ **Implemented:**
 - Cookie-backed browser sessions with HttpOnly access and refresh tokens
+- Refresh-session binding via a separate HttpOnly cookie
 - Server-side CSRF protection for unsafe cookie-authenticated requests via trusted `Origin`/`Referer` validation
 - Backend CSP headers for API responses and backend-served verification HTML
 - Automatic token refresh

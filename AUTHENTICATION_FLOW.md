@@ -50,11 +50,13 @@
 4. Backend stores refresh token in database with:
    - User ID
    - Token hash
-   - Client IP + User-Agent (fingerprint)
+   - Session-binding cookie hash
+   - Client IP + User-Agent for audit metadata
    - Expiry date
 5. Backend returns:
    - Access token in response body for non-browser/API clients
    - Access token in HttpOnly cookie for browser sessions
+   - Session-binding token in HttpOnly cookie for browser sessions
    - Refresh token in HttpOnly cookie
 6. Frontend treats the browser session as cookie-backed and derives auth state from `/users/me/`
 7. User redirected to dashboard
@@ -70,9 +72,9 @@
 2. Frontend automatically calls `/auth/refresh` endpoint
 3. Backend:
    - Extracts refresh token from HttpOnly cookie
+   - Validates the session-binding cookie hash matches the stored value
    - Validates token hash exists in database
    - Checks token not revoked or expired
-   - Validates client fingerprint matches
    - **Rotates token** (marks old as used, generates new)
 4. Backend rotates both browser cookies and returns a new access token in the response body for non-browser/API clients
 5. Frontend retries the original request after refresh succeeds
@@ -100,10 +102,10 @@
 - If used token is reused → security breach detected → revoke entire chain
 - Prevents token replay attacks
 
-### Client Fingerprinting
-- Refresh tokens bound to IP + User-Agent
-- If fingerprint changes → refresh denied
-- Prevents token theft across devices
+### Session Binding
+- Refresh tokens are bound to a separate HttpOnly session-binding cookie
+- Refresh requires both cookies, so stealing only the refresh token is not enough
+- Client IP and User-Agent are stored as audit metadata instead of hard refresh locks
 
 ### Refresh Token Revocation
 - Users can logout from all devices
@@ -119,6 +121,7 @@
 | Token Type | Storage Location | Lifespan | Purpose |
 |------------|-----------------|----------|---------|
 | Access Token | HttpOnly Cookie (browser) / response body (API clients) | 15 min | API authentication |
+| Session Binding | HttpOnly Cookie | 15 min, rotated with browser session | Refresh-session binding |
 | Refresh Token | HttpOnly Cookie | 7 days | Get new access tokens |
 
 **Why this approach?**
@@ -134,7 +137,7 @@
 - User can logout to revoke all sessions
 
 ### What if refresh token is stolen?
-- Attacker needs same IP + User-Agent (fingerprint check)
+- Attacker also needs the matching session-binding cookie
 - User logout immediately revokes it
 - Token rotation limits replay attacks
 
@@ -164,6 +167,6 @@ Rate limiting is applied on authentication endpoints. Recommended production thr
 Log and alert on:
 - Multiple failed login attempts
 - Refresh token reuse (potential breach)
-- Fingerprint mismatches
+- Session-binding mismatches
 - Unusual login locations
 - High volume of registration attempts

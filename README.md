@@ -28,7 +28,7 @@ See the LICENSE file (Apache License 2.0) for the full terms.
 - FastAPI backend with async SQLModel/SQLAlchemy + SQLite
 - React 19 + TypeScript frontend (Vite)
 - First-run initialization flow (`/setup`) protected by one-time setup token
-- JWT access tokens + rotating refresh tokens in HttpOnly cookies
+- JWT access tokens + rotating refresh tokens with HttpOnly session-binding cookies
 - Email verification and password reset flows
 - Admin user management and system settings endpoints
 - Dynamic UI labels with locale support including RTL locales

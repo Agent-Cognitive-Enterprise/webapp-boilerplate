@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import re
 
 from utils.password import get_password_hash
-from settings import COOKIE_REFRESH_NAME
+from settings import COOKIE_REFRESH_NAME, COOKIE_SESSION_BINDING_NAME
 from tests.helper import create_test_user
 from auth.refresh_utils import hash_token
 from crud.refresh_token import get_by_token_hash, mark_used_and_revoke
@@ -543,7 +543,7 @@ async def test_refresh_token_success(
 
 
 @pytest.mark.asyncio
-async def test_refresh_fingerprint_mismatch(
+async def test_refresh_succeeds_across_ip_and_user_agent_changes(
     client: AsyncClient,
     session: AsyncSession,
 ):
@@ -579,8 +579,82 @@ async def test_refresh_fingerprint_mismatch(
         },
     )
 
-    assert mismatch_response.status_code == 401
-    assert mismatch_response.json()["detail"] == "Invalid refresh token"
+    assert mismatch_response.status_code == 200
+    assert mismatch_response.json()["token_type"] == "bearer"
+
+
+@pytest.mark.asyncio
+async def test_refresh_requires_matching_session_binding_cookie(
+    client: AsyncClient,
+    session: AsyncSession,
+):
+    db_user = await create_test_user(
+        session=session,
+        hashed_password=get_password_hash(test_password),
+    )
+    resp = await client.post(
+        "/auth/token",
+        data={
+            "username": db_user.email,
+            "password": test_password,
+        },
+    )
+
+    assert resp.status_code == 200
+    refresh_cookie = re.search(
+        rf"{COOKIE_REFRESH_NAME}=([^;]+);",
+        resp.headers["set-cookie"],
+    ).group(1)
+    client.cookies.set(COOKIE_REFRESH_NAME, refresh_cookie)
+    client.cookies.set(COOKIE_SESSION_BINDING_NAME, "tampered-session-binding")
+
+    refresh_response = await client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
+
+    assert refresh_response.status_code == 401
+    assert refresh_response.json()["detail"] == "Invalid refresh token"
+
+
+@pytest.mark.asyncio
+async def test_refresh_migrates_legacy_token_without_session_binding_hash(
+    client: AsyncClient,
+    session: AsyncSession,
+):
+    db_user = await create_test_user(
+        session=session,
+        hashed_password=get_password_hash(test_password),
+    )
+    resp = await client.post(
+        "/auth/token",
+        data={
+            "username": db_user.email,
+            "password": test_password,
+        },
+    )
+
+    assert resp.status_code == 200
+    refresh_cookie = re.search(
+        rf"{COOKIE_REFRESH_NAME}=([^;]+);",
+        resp.headers["set-cookie"],
+    ).group(1)
+    rt = await get_by_token_hash(session, hash_token(refresh_cookie))
+    assert rt is not None
+
+    rt.client_binding_hash = None
+    await session.commit()
+
+    if COOKIE_SESSION_BINDING_NAME in client.cookies:
+        client.cookies.delete(COOKIE_SESSION_BINDING_NAME)
+
+    refresh_response = await client.post("/auth/refresh", headers=TRUSTED_ORIGIN)
+
+    assert refresh_response.status_code == 200
+    rotated_cookie = re.search(
+        rf"{COOKIE_REFRESH_NAME}=([^;]+);",
+        refresh_response.headers["set-cookie"],
+    ).group(1)
+    rotated_rt = await get_by_token_hash(session, hash_token(rotated_cookie))
+    assert rotated_rt is not None
+    assert rotated_rt.client_binding_hash is not None
 
 
 @pytest.mark.asyncio

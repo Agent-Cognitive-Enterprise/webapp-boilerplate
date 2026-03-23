@@ -48,6 +48,7 @@ CORS_ALLOW_ORIGINS = [
 # Cookie settings
 COOKIE_ACCESS_NAME = os.getenv("COOKIE_ACCESS_NAME", "at")
 COOKIE_REFRESH_NAME = os.getenv("COOKIE_REFRESH_NAME", "rt")
+COOKIE_SESSION_BINDING_NAME = os.getenv("COOKIE_SESSION_BINDING_NAME", "sb")
 COOKIE_SECURE = (
     os.getenv("COOKIE_SECURE", "false") == "true"
 )  # True in prod (HTTPS only)

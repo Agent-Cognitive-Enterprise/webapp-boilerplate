@@ -16,6 +16,7 @@ async def create_refresh_token(
     token_hash: str,
     expires_at,
     rotated_from_id: uuid.UUID | None = None,
+    client_binding_hash: str | None = None,
     ip: str | None = None,
     ua: str | None = None,
 ) -> RefreshToken:
@@ -24,6 +25,7 @@ async def create_refresh_token(
         token_hash=token_hash,
         expires_at=expires_at,
         rotated_from_id=rotated_from_id,
+        client_binding_hash=client_binding_hash,
         ip=ip,
         user_agent=ua,
     )

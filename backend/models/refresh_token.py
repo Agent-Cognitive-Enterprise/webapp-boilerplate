@@ -19,5 +19,6 @@ class RefreshToken(BaseModel, table=True):
         default=None, nullable=True
     )  # It is an id of a previously issued token for the same user
     used_at: Optional[datetime] = Field(default=None, nullable=True)
+    client_binding_hash: Optional[str] = Field(max_length=128, default=None, nullable=True)
     user_agent: Optional[str] = Field(max_length=256, default=None, nullable=True)
     ip: Optional[str] = Field(max_length=64, default=None, nullable=True)

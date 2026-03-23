@@ -25,6 +25,11 @@ def generate_refresh_token() -> tuple[str, str]:
     return plain, _hash_token(plain)
 
 
+def generate_session_binding_token() -> tuple[str, str]:
+    plain = secrets.token_urlsafe(32)
+    return plain, _hash_token(plain)
+
+
 def refresh_expiry() -> datetime:
     """
     Returns an expiry datetime for the refresh token
@@ -41,10 +46,11 @@ def get_client_ip_ua(request: Request) -> tuple[str | None, str | None]:
     """
 
     try:
-        # Handles possible proxy setups, falling back to direct client IP
-        ip = request.headers.get(
-            "x-forwarded-for", request.client.host if request.client else None
-        )
+        forwarded_for = request.headers.get("x-forwarded-for")
+        if forwarded_for:
+            ip = forwarded_for.split(",", 1)[0].strip() or None
+        else:
+            ip = request.client.host if request.client else None
     except (Exception,):
         ip = None
     ua = request.headers.get("user-agent")

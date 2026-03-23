@@ -9,6 +9,7 @@ from fastapi import Request
 from auth.refresh_utils import (
     hash_token,
     generate_refresh_token,
+    generate_session_binding_token,
     refresh_expiry,
     get_client_ip_ua,
 )
@@ -50,6 +51,16 @@ def test_hash_token(token: str, expected_length: int):
 
 def test_generate_refresh_token():
     plain, token_hash = generate_refresh_token()
+
+    assert isinstance(plain, str)
+    assert isinstance(token_hash, str)
+    assert len(plain) > 0
+    assert len(token_hash) == 64
+    assert token_hash == hash_token(plain)
+
+
+def test_generate_session_binding_token():
+    plain, token_hash = generate_session_binding_token()
 
     assert isinstance(plain, str)
     assert isinstance(token_hash, str)
@@ -101,18 +112,18 @@ def test_get_client_ip_ua():
     assert ip is None
     assert ua is None
 
-    # 5. x-forwarded-for is present but empty string, should return empty string not fallback
+    # 5. Empty x-forwarded-for should fall back to the direct client host
     req = create_request({"x-forwarded-for": "", "user-agent": "ua"}, "1.2.3.4")
     ip, ua = get_client_ip_ua(req)
 
-    assert ip == ""  # x-forwarded-for header present, even if empty
+    assert ip == "1.2.3.4"
     assert ua == "ua"
 
-    # 6. x-forwarded-for contains multiple IPs (real world case)
+    # 6. x-forwarded-for contains multiple IPs; keep only the left-most client IP
     req = create_request(
         {"x-forwarded-for": "8.8.8.8, 1.2.3.4", "user-agent": "multi-ua"}, "1.2.3.4"
     )
     ip, ua = get_client_ip_ua(req)
 
-    assert ip == "8.8.8.8, 1.2.3.4"
+    assert ip == "8.8.8.8"
     assert ua == "multi-ua"

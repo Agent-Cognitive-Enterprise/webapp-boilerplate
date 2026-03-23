@@ -1,7 +1,7 @@
 # HANDOFF
 
 ## Current objective
-Cookie-backed browser auth, CSRF protection, and backend CSP headers are implemented. Keep CI stable and move to the next hardening step without regressing the verified session model.
+Cookie-backed browser auth now uses a dedicated session-binding cookie instead of IP/User-Agent fingerprint enforcement. Keep CI stable and move to the next production-hardening step without regressing the verified session model.
 
 ## Completed in this session
 - Switched browser auth from `localStorage` bearer tokens to a cookie-backed session model.
@@ -17,12 +17,17 @@ Cookie-backed browser auth, CSRF protection, and backend CSP headers are impleme
 - Added backend CSP handling with a strict default policy plus a narrower inline-script/style exception for the backend-served verification feedback HTML page.
 - Added CSP regression coverage in `backend/tests/api/test_security_headers.py` and updated the email-verification e2e assertions.
 - Removed the verification feedback page's inline script/style so it now runs under the default backend CSP with no route-specific exception.
+- Replaced refresh-token IP/User-Agent enforcement with a dedicated HttpOnly session-binding cookie stored as a hash on refresh tokens.
+- Added rollout compatibility so legacy refresh tokens without a stored binding hash can migrate on their next successful refresh instead of forcing immediate logout.
+- Normalized `X-Forwarded-For` handling to capture only the left-most client IP for audit metadata rather than trusting the raw header string.
+- Added migration `20260323_01_add_refresh_token_binding_hash.py` and regression coverage for cookie issuance, session-binding mismatch rejection, and legacy-token refresh migration.
+- Updated top-level and frontend auth documentation to describe the session-binding cookie model.
 
 ## Current status
-Browser auth is cookie-backed and no longer depends on `localStorage` bearer tokens. Unsafe requests that rely on auth cookies now require a trusted `Origin` or `Referer`, while bearer-header API clients still work without CSRF checks. Backend responses emit a single default CSP with no special-case inline exception. Backend verification is green from the current tree: `175` tests passed.
+Browser auth is cookie-backed and no longer depends on `localStorage` bearer tokens. Refresh no longer hard-fails on IP/User-Agent changes; instead it requires a separate HttpOnly session-binding cookie, while still recording IP/User-Agent for audit metadata. Unsafe requests that rely on auth cookies still require a trusted `Origin` or `Referer`, and backend responses emit a single default CSP with no inline exception. Backend verification is green from the current tree: `179` tests passed.
 
 ## Next step
-Next meaningful step is operational rather than code-level: make sure the frontend deployment path ships a matching CSP at the reverse proxy or static host layer, since FastAPI does not serve the Vite app in production.
+Next meaningful step is the production throttling story: replace the in-memory auth rate limiter with a shared store or otherwise make the current single-process limitation explicit in the deployment path.
 
 ## Important files
 - AGENTS.md
@@ -35,6 +40,7 @@ Next meaningful step is operational rather than code-level: make sure the fronte
 - backend/auth/cookies.py
 - backend/security/csrf.py
 - backend/security/csp.py
+- backend/alembic/versions/20260323_01_add_refresh_token_binding_hash.py
 - frontend/src/api/api.ts
 - frontend/src/api/auth.ts
 - frontend/src/contexts/AuthContext.tsx
@@ -44,7 +50,7 @@ Next meaningful step is operational rather than code-level: make sure the fronte
 - backend/tests/api/test_security_headers.py
 
 ## Notes for next session
-The important behavioral changes are: browser auth no longer survives by writing a JWT into `localStorage`, unsafe cookie-authenticated requests now need a trusted `Origin` or `Referer`, and backend responses include a single default CSP with no inline-script/style exception. Tests or helpers that use real cookies must model browser origins when exercising refresh/logout or other unsafe endpoints. Header-based bearer auth still exists for non-browser clients and API-style tests. Browser pytest still needs to run serially because `frontend/tests/conftest.py` shares `frontend_e2e.db`.
+The important behavioral changes are: browser auth no longer survives by writing a JWT into `localStorage`, unsafe cookie-authenticated requests now need a trusted `Origin` or `Referer`, backend responses include a single default CSP with no inline-script/style exception, and refresh now depends on a dedicated HttpOnly session-binding cookie rather than IP/User-Agent lockstep. Legacy refresh tokens without `client_binding_hash` are allowed one migration refresh and then pick up the new binding. Header-based bearer auth still exists for non-browser clients and API-style tests. Browser pytest still needs to run serially because `frontend/tests/conftest.py` shares `frontend_e2e.db`.
 
 ## Last updated
-2026-03-22 23:59 UTC
+2026-03-23 00:14 UTC
