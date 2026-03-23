@@ -59,7 +59,12 @@ async def login_for_access_token_handler(
     check_rate_limit,
     create_access_token,
 ) -> Token:
-    check_rate_limit("token", request.client.host if request.client else None, request)
+    await check_rate_limit(
+        session=session,
+        action="token",
+        ip=request.client.host if request.client else None,
+        request=request,
+    )
 
     email = to_email_str(form_data.username)
     db_user = await get_user_by_email(session=session, email=email)
@@ -117,7 +122,12 @@ async def rotate_refresh_token_handler(
     check_rate_limit,
     create_access_token,
 ) -> Token:
-    check_rate_limit("refresh", request.client.host if request.client else None, request)
+    await check_rate_limit(
+        session=session,
+        action="refresh",
+        ip=request.client.host if request.client else None,
+        request=request,
+    )
 
     plain_rt = request.cookies.get(COOKIE_REFRESH_NAME)
     if not plain_rt:

@@ -10,7 +10,6 @@ from api.auth_sessions import login_for_access_token_handler
 from api.auth_sessions import logout_handler
 from api.auth_sessions import rotate_refresh_token_handler
 from api.auth_shared import (
-    _RATE_BUCKETS as SHARED_RATE_BUCKETS,
     check_rate_limit,
     email_verification_expiry,
     generate_email_verification_token,
@@ -23,7 +22,6 @@ from services.email_service import send_email
 from utils.db import get_session
 
 router = APIRouter()
-_RATE_BUCKETS = SHARED_RATE_BUCKETS
 
 
 @router.post("/auth/register", response_model=UserPublic)

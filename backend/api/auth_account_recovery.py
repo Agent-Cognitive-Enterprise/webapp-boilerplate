@@ -115,10 +115,11 @@ async def forgot_password(
     request: Request,
     payload: ForgotPasswordRequest,
 ):
-    check_rate_limit(
-        "forgot_password",
-        request.client.host if request.client else None,
-        request,
+    await check_rate_limit(
+        session=session,
+        action="forgot_password",
+        ip=request.client.host if request.client else None,
+        request=request,
     )
 
     db_user = await get_user_by_email(session, payload.email)
@@ -179,7 +180,12 @@ async def reset_password(
     request: Request,
     payload: ResetPasswordRequest,
 ):
-    check_rate_limit("reset_password", request.client.host if request.client else None, request)
+    await check_rate_limit(
+        session=session,
+        action="reset_password",
+        ip=request.client.host if request.client else None,
+        request=request,
+    )
 
     token_hash = hash_plain_token(payload.token)
     reset_token = await password_reset_crud.get_by_token_hash(session, token_hash)

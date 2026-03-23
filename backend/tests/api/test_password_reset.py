@@ -227,9 +227,10 @@ async def test_reset_password_calls_rate_limit_guard(
 ):
     called = {"count": 0}
 
-    def fake_check_rate_limit(action: str, ip: str | None, request):
+    async def fake_check_rate_limit(*, session, action: str, ip: str | None, request):
         called["count"] += 1
         assert action == "reset_password"
+        assert session is not None
 
     monkeypatch.setattr(auth_recovery_api, "check_rate_limit", fake_check_rate_limit)
 

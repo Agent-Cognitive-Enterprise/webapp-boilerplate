@@ -24,7 +24,12 @@ async def register_user_handler(
     email_verification_expiry,
     send_email,
 ) -> UserPublic:
-    check_rate_limit("register", request.client.host if request.client else None, request)
+    await check_rate_limit(
+        session=session,
+        action="register",
+        ip=request.client.host if request.client else None,
+        request=request,
+    )
 
     is_valid, errors = validate_password_strength(user.password)
     if not is_valid:

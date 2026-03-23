@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
 from html import escape
-from time import time
 
 from fastapi import HTTPException, Request, status
+from sqlalchemy import delete, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import and_, col, select
 
 from i18n.messages import msg
+from models.auth_rate_limit_event import AuthRateLimitEvent
 from settings import (
     AUTH_BACKEND_BASE_URL,
     AUTH_EMAIL_VERIFICATION_EXPIRE_HOURS,
@@ -24,7 +26,6 @@ _RATE_LIMITS: dict[str, tuple[int, int]] = {
     "forgot_password": (10, 3600),
     "reset_password": (10, 3600),
 }
-_RATE_BUCKETS: dict[str, deque[float]] = defaultdict(deque)
 
 
 def hash_plain_token(plain_token: str) -> str:
@@ -61,19 +62,42 @@ def resolve_auth_backend_base_url(settings) -> str:
     )
 
 
-def check_rate_limit(action: str, ip: str | None, request: Request | None = None) -> None:
+async def check_rate_limit(
+    *,
+    session: AsyncSession,
+    action: str,
+    ip: str | None,
+    request: Request | None = None,
+) -> None:
     if not AUTH_RATE_LIMIT_ENABLED:
         return
+
     limit, window_seconds = _RATE_LIMITS[action]
     key = f"{action}:{ip or 'unknown'}"
-    now = time()
-    bucket = _RATE_BUCKETS[key]
-    cutoff = now - window_seconds
+    cutoff = (datetime.now(timezone.utc) - timedelta(seconds=window_seconds)).replace(tzinfo=None)
 
-    while bucket and bucket[0] < cutoff:
-        bucket.popleft()
+    await session.execute(
+        delete(AuthRateLimitEvent).where(
+            and_(
+                AuthRateLimitEvent.action == action,
+                AuthRateLimitEvent.bucket_key == key,
+                col(AuthRateLimitEvent.created_at) < cutoff,
+            )
+        )
+    )
 
-    if len(bucket) >= limit:
+    count_result = await session.execute(
+        select(func.count()).select_from(AuthRateLimitEvent).where(
+            and_(
+                AuthRateLimitEvent.action == action,
+                AuthRateLimitEvent.bucket_key == key,
+                col(AuthRateLimitEvent.deleted_at).is_(None),
+                col(AuthRateLimitEvent.created_at) >= cutoff,
+            )
+        )
+    )
+    if int(count_result.scalar_one()) >= limit:
+        await session.commit()
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=msg(
@@ -83,7 +107,8 @@ def check_rate_limit(action: str, ip: str | None, request: Request | None = None
             ),
         )
 
-    bucket.append(now)
+    session.add(AuthRateLimitEvent(action=action, bucket_key=key))
+    await session.commit()
 
 
 def request_accepts_html(request: Request) -> bool:

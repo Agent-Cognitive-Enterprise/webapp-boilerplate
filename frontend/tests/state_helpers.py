@@ -5,7 +5,7 @@ from sqlalchemy import delete
 from sqlmodel import select
 
 from auth.auth_handler import create_access_token
-from api.auth import _RATE_BUCKETS
+from models.auth_rate_limit_event import AuthRateLimitEvent
 from crud.ui_label import get_by_key_locale
 from crud.ui_label_suggestions import get_label_suggestions
 from frontend.tests.conftest import run_async_safely
@@ -39,10 +39,9 @@ class SeedEmailSettings:
 
 
 def reset_uninitialized_state() -> None:
-    _RATE_BUCKETS.clear()
-
     async def _task():
         async for session in get_session():
+            await session.execute(delete(AuthRateLimitEvent))
             await session.execute(delete(UiLabel))
             await session.execute(delete(UiLocale))
             await session.execute(delete(User))
