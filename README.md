@@ -178,7 +178,7 @@ Summary:
 
 - SQLite is still a valid production path for small single-node deployments.
 - PostgreSQL is the recommended path for standard production deployments.
-- The deployment examples cover backend plus database; deploy the frontend separately as a static build.
+- The deployment examples cover backend plus database, and include Nginx examples for the production frontend host and API reverse proxy.
 
 ## Common Commands
 

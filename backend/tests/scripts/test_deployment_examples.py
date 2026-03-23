@@ -49,3 +49,30 @@ def test_deployment_docs_and_env_examples_exist() -> None:
     assert (repo_root / "deploy" / "backend.sqlite.env.example").exists()
     assert (repo_root / "deploy" / "backend.postgres.env.example").exists()
     assert (repo_root / "deploy" / "postgres.env.example").exists()
+    assert (repo_root / "deploy" / "nginx.frontend.conf.example").exists()
+    assert (repo_root / "deploy" / "nginx.api.conf.example").exists()
+
+
+def test_nginx_frontend_example_enforces_spa_hosting_and_frontend_csp() -> None:
+    config = (_repo_root() / "deploy" / "nginx.frontend.conf.example").read_text(
+        encoding="utf-8"
+    )
+
+    assert "return 301 https://$host$request_uri;" in config
+    assert "try_files $uri /index.html;" in config
+    assert "Content-Security-Policy" in config
+    assert "connect-src 'self' https://api.example.com" in config
+    assert "https://fonts.googleapis.com" in config
+    assert "https://fonts.gstatic.com" in config
+
+
+def test_nginx_api_example_preserves_https_and_forwarded_headers() -> None:
+    config = (_repo_root() / "deploy" / "nginx.api.conf.example").read_text(
+        encoding="utf-8"
+    )
+
+    assert "return 301 https://$host$request_uri;" in config
+    assert "proxy_set_header Host $host;" in config
+    assert "proxy_set_header X-Forwarded-Proto https;" in config
+    assert "proxy_set_header X-Forwarded-Host $host;" in config
+    assert "proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;" in config

@@ -26,6 +26,32 @@ The backend does not serve the Vite frontend in production.
 
 That means every deployment path here covers the backend and database only. Deploy the frontend separately as a static build, and apply equivalent CSP headers at the frontend host or reverse proxy.
 
+## Recommended host layout
+
+The safest browser-auth topology for this repo is:
+
+- frontend at `https://app.example.com`
+- backend API at `https://api.example.com`
+
+That keeps the browser session same-site while still separating the static frontend host from the API host.
+
+Recommended production values for that layout:
+
+| Setting | Value |
+| --- | --- |
+| `VITE_API_URL` | `https://api.example.com` |
+| `CORS_ALLOW_ORIGINS` | `https://app.example.com` |
+| `AUTH_FRONTEND_BASE_URL` | `https://app.example.com` |
+| `AUTH_BACKEND_BASE_URL` | `https://api.example.com` |
+| `COOKIE_SECURE` | `true` |
+| `COOKIE_SAME_SITE` | `lax` |
+
+Notes:
+
+- Keep `CORS_ALLOW_ORIGINS` to exact origins. Do not use `*` because browser auth requires `allow_credentials=True`.
+- Leave `COOKIE_DOMAIN` unset unless you explicitly need wider cookie scope. Host-only cookies are the safer default.
+- If the frontend and backend are on different registrable domains, `COOKIE_SAME_SITE=lax` will block cookie-authenticated XHR/fetch requests. In that case you must intentionally move to `COOKIE_SAME_SITE=none`, keep `COOKIE_SECURE=true`, and accept the broader CSRF surface.
+
 ## Backend image
 
 The backend container image is defined in `backend/Dockerfile`.
@@ -114,6 +140,72 @@ Requirements:
 - `AUTH_FRONTEND_BASE_URL` must match the frontend origin
 - `AUTH_BACKEND_BASE_URL` must match the backend origin used in auth flows
 
+Concrete Nginx examples for the frontend host and API reverse proxy are included here:
+
+- `deploy/nginx.frontend.conf.example`
+- `deploy/nginx.api.conf.example`
+
+Those examples assume:
+
+- frontend static files are served from `frontend/dist/`
+- the frontend host is `app.example.com`
+- the backend host is `api.example.com`
+- TLS is terminated at Nginx
+
+## Frontend host requirements
+
+The current frontend needs these CSP allowances at the real frontend host:
+
+- `script-src 'self'`
+- `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`
+- `font-src 'self' data: https://fonts.gstatic.com`
+- `img-src 'self' data: blob:`
+- `connect-src 'self' https://api.example.com`
+
+Why those directives are required today:
+
+- `connect-src` must allow the deployed API origin because the browser talks directly to the backend.
+- `style-src 'unsafe-inline'` is required by the current Chakra UI / Emotion runtime styling approach.
+- `fonts.googleapis.com` and `fonts.gstatic.com` are required by the current frontend font import in `frontend/src/index.css`.
+- `img-src data: blob:` covers the current branding image paths and browser-generated blob URLs.
+
+If you remove Google Fonts or move away from Emotion-injected styles later, tighten the frontend CSP accordingly.
+
+The frontend host should also:
+
+- redirect HTTP to HTTPS
+- emit HSTS after TLS is working
+- serve `index.html` for client-side routes
+- cache hashed assets aggressively
+- avoid adding permissive CORS headers; the browser should load the SPA from the same origin it was requested from
+
+## API reverse proxy requirements
+
+The API reverse proxy should:
+
+- redirect HTTP to HTTPS
+- preserve `Host`
+- send `X-Forwarded-For`, `X-Real-IP`, `X-Forwarded-Host`, and `X-Forwarded-Proto=https`
+- avoid overwriting the backend `Content-Security-Policy` header
+- avoid adding wildcard CORS headers in front of FastAPI
+
+The backend already emits its own security headers and enforces exact-origin CORS. The proxy should forward traffic cleanly rather than trying to replace that logic.
+
+## HTTPS and edge checklist
+
+For a production frontend host plus API host split, verify all of the following together:
+
+- browser users load the SPA from `https://app.example.com`
+- the SPA calls `https://api.example.com`
+- `VITE_API_URL`, `CORS_ALLOW_ORIGINS`, `AUTH_FRONTEND_BASE_URL`, and `AUTH_BACKEND_BASE_URL` all match those public URLs exactly
+- `COOKIE_SECURE=true`
+- `COOKIE_SAME_SITE=lax` only if frontend and backend stay same-site
+- HTTP is redirected to HTTPS on both hosts
+- HSTS is enabled only after HTTPS is confirmed working
+- the frontend host serves the frontend CSP
+- the API proxy preserves forwarded headers and does not loosen CORS
+- the backend origin exposed to browsers matches the origin used in emails and auth redirects
+
 ## Production checklist
 
 - Set `APP_ENV=production`
@@ -122,4 +214,5 @@ Requirements:
 - Replace all placeholder secrets
 - Run with persistent storage
 - Apply the frontend CSP at the real frontend host or reverse proxy
+- Use the included Nginx examples or mirror their HTTPS/CSP/CORS behavior at your real edge
 - Complete `/setup` after first boot using `INITIAL_SETUP_TOKEN`
