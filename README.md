@@ -25,7 +25,9 @@ See the LICENSE file (Apache License 2.0) for the full terms.
 
 ## Highlights
 
-- FastAPI backend with async SQLModel/SQLAlchemy + SQLite
+- FastAPI backend with async SQLModel/SQLAlchemy
+- SQLite support for local development and small single-node deployments
+- PostgreSQL support for standard production deployments
 - React 19 + TypeScript frontend (Vite)
 - First-run initialization flow (`/setup`) protected by one-time setup token
 - JWT access tokens + rotating refresh tokens with HttpOnly session-binding cookies
@@ -108,6 +110,12 @@ python main.py
 Backend runs on `http://localhost:8000`.
 The backend does not create or mutate schema on startup; apply Alembic migrations before running the app.
 
+Database choices:
+
+- SQLite is the default local setup via `SQLITE_DB_PATH`.
+- SQLite can also be used in small single-node production deployments.
+- PostgreSQL is the recommended production backend. Set `DATABASE_URL`, for example `postgresql://user:pass@localhost:5432/webapp`.
+
 ### 3. Frontend Setup
 
 ```bash
@@ -134,7 +142,8 @@ On fresh startup, the app is locked until setup is completed:
 Core variables:
 
 - `APP_ENV` (default: `development`)
-- `DB_TYPE` (currently `sqlite`)
+- `DATABASE_URL` (recommended for PostgreSQL and other non-default deployments)
+- `DB_TYPE` (compatibility fallback; default: `sqlite`)
 - `SQLITE_DB_PATH` (default: `app.db`)
 - `AUTH_SECRET_KEY` (required)
 - `INITIAL_SETUP_TOKEN` (required)
@@ -145,6 +154,12 @@ Core variables:
 - `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` (optional third-party AI provider keys)
 
 See [backend/.env.example](backend/.env.example) for the full template.
+
+Database support:
+
+- SQLite remains supported for local development and small single-node production deployments.
+- PostgreSQL is supported and recommended for standard production deployments.
+- The application resolves both runtime and Alembic database URLs from the same environment settings.
 
 ### Frontend (`frontend/.env`)
 

@@ -15,6 +15,7 @@ if str(BASE_DIR) not in sys.path:
 
 # Import table models so SQLModel.metadata is populated for autogenerate.
 import models.email_verification_token  # noqa: F401,E402
+import models.auth_rate_limit_event  # noqa: F401,E402
 import models.password_reset_token  # noqa: F401,E402
 import models.refresh_token  # noqa: F401,E402
 import models.system_settings  # noqa: F401,E402
@@ -23,17 +24,19 @@ import models.ui_label_suggestions  # noqa: F401,E402
 import models.ui_locale  # noqa: F401,E402
 import models.user  # noqa: F401,E402
 import models.user_settings  # noqa: F401,E402
+from utils.db_config import resolve_database_config  # noqa: E402
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-db_type = os.getenv("DB_TYPE", "sqlite")
-if db_type != "sqlite":
-    raise RuntimeError(f"Unsupported DB_TYPE for Alembic: {db_type}. Only sqlite is supported.")
-sqlite_db_path = os.getenv("SQLITE_DB_PATH", "app.db")
-config.set_main_option("sqlalchemy.url", f"sqlite:///{sqlite_db_path}")
+db_config = resolve_database_config(
+    database_url=os.getenv("DATABASE_URL"),
+    db_type=os.getenv("DB_TYPE", "sqlite"),
+    sqlite_db_path=os.getenv("SQLITE_DB_PATH", "app.db"),
+)
+config.set_main_option("sqlalchemy.url", db_config.sync_url)
 
 target_metadata = SQLModel.metadata
 

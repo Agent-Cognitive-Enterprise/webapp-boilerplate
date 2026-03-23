@@ -14,7 +14,10 @@ APP_ENV = os.getenv("APP_ENV", "development").lower()
 INITIAL_SETUP_TOKEN = os.getenv("INITIAL_SETUP_TOKEN")
 
 # Database connection parameters
-# For production use SQLite, for testing use in-memory SQLite
+# `DATABASE_URL` is the primary setting for production deployments.
+# If it is unset, the app falls back to SQLite using `SQLITE_DB_PATH`.
+DATABASE_URL = os.getenv("DATABASE_URL")
+# `DB_TYPE` is retained as a compatibility fallback for SQLite-based setups.
 DB_TYPE = os.getenv("DB_TYPE", "sqlite")
 SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "app.db")
 

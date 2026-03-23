@@ -2,24 +2,29 @@
 import logging
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-from settings import DB_TYPE, SQLITE_DB_PATH
+from settings import DATABASE_URL, DB_TYPE, SQLITE_DB_PATH
+from utils.db_config import resolve_database_config
 
 logger = logging.getLogger(__name__)
 
-# Use SQLite for both production and testing
-# For testing, use an in-memory database via environment variable
-if DB_TYPE == "sqlite":
-    DATABASE_URL = f"sqlite+aiosqlite:///{SQLITE_DB_PATH}"
-    async_engine = create_async_engine(
-        DATABASE_URL,
-        echo=False,
-        connect_args={
-            "check_same_thread": False,
-        },
-    )
-    logger.info(f"Using SQLite database: {DATABASE_URL}")
+db_config = resolve_database_config(
+    database_url=DATABASE_URL,
+    db_type=DB_TYPE,
+    sqlite_db_path=SQLITE_DB_PATH,
+)
+
+engine_kwargs: dict = {"echo": False}
+if db_config.dialect == "sqlite":
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
 else:
-    raise ValueError(f"Unsupported DB_TYPE: {DB_TYPE}. Only 'sqlite' is supported.")
+    engine_kwargs["pool_pre_ping"] = True
+
+async_engine = create_async_engine(
+    db_config.async_url,
+    **engine_kwargs,
+)
+
+logger.info("Using %s database backend", db_config.dialect)
 
 AsyncSessionLocal = async_sessionmaker(
     bind=async_engine,
