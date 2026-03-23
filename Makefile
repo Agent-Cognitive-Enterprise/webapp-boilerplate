@@ -1,4 +1,4 @@
-.PHONY: dev backend-migrate backend-dev frontend-dev test test-backend test-frontend lint lint-backend typecheck-backend verify-backend build
+.PHONY: dev backend-migrate backend-dev frontend-dev test test-backend test-frontend lint lint-backend typecheck-backend verify-backend smoke-deployment build
 
 dev:
 	@echo "Run backend and frontend in separate terminals:"
@@ -27,6 +27,9 @@ typecheck-backend:
 	cd backend && PYTHONPATH=. .venv/bin/mypy --config-file pyproject.toml
 
 verify-backend: lint-backend typecheck-backend test-backend
+
+smoke-deployment:
+	cd backend && .venv/bin/python scripts/smoke_deployment_topology.py
 
 test-frontend:
 	cd frontend && npm test

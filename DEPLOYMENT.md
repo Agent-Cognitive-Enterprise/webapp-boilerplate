@@ -145,6 +145,19 @@ Concrete Nginx examples for the frontend host and API reverse proxy are included
 - `deploy/nginx.frontend.conf.example`
 - `deploy/nginx.api.conf.example`
 
+Smoke-check the documented topology from the repository root with:
+
+```bash
+make smoke-deployment
+```
+
+That command rebuilds the frontend with `VITE_API_URL=https://api.example.com` and validates:
+
+- the generated `frontend/dist/` output references the production API origin
+- the generated build no longer references the localhost API fallback
+- the frontend Nginx config still matches the SPA/CSP requirements
+- the API Nginx config still preserves the required HTTPS forwarding headers
+
 Those examples assume:
 
 - frontend static files are served from `frontend/dist/`

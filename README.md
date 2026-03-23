@@ -203,6 +203,9 @@ PYTHONPATH=. .venv/bin/mypy --config-file pyproject.toml
 # run backend e2e tests
 PYTHONPATH=. pytest tests/e2e -q
 
+# run deployment smoke validation
+.venv/bin/python scripts/smoke_deployment_topology.py
+
 # run i18n audit
 PYTHONPATH=. python scripts/i18n_audit.py
 ```
@@ -222,6 +225,14 @@ The backend `mypy` gate is currently scoped to the typed backend verification pa
 - `auth/cookies.py`
 - `scripts/check_email_config.py`
 - `scripts/check_env_email_settings.py`
+
+For the documented production frontend host plus API proxy topology, run:
+
+```bash
+make smoke-deployment
+```
+
+That command performs a real frontend production build with `VITE_API_URL=https://api.example.com` and validates the generated `frontend/dist/` output plus the Nginx example configs.
 
 Test auth/setup defaults used by backend tests and frontend browser tests are centralized in `backend/tests/test_env.py`. Do not duplicate `AUTH_SECRET_KEY` or `INITIAL_SETUP_TOKEN` in CI test-job `env` blocks; `backend/scripts/check_ci_test_env.py` enforces that rule.
 
