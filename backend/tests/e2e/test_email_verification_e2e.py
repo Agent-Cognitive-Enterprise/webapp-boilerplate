@@ -107,8 +107,8 @@ async def test_verify_email_invalid_token_returns_html_feedback_for_browser(
     assert response.status_code == 400
     assert "text/html" in response.headers["content-type"]
     assert "content-security-policy" in response.headers
-    assert "script-src 'self' 'unsafe-inline'" in response.headers["content-security-policy"]
+    assert "script-src 'self'" in response.headers["content-security-policy"]
+    assert "'unsafe-inline'" not in response.headers["content-security-policy"]
     assert "Invalid or already used verification token" in response.text
-    assert 'id="countdown">10<' in response.text
+    assert "Redirecting to login in 10 seconds." in response.text
     assert f'href="{AUTH_FRONTEND_BASE_URL}/login"' in response.text
-    assert f"const loginUrl = '{AUTH_FRONTEND_BASE_URL}/login';" in response.text

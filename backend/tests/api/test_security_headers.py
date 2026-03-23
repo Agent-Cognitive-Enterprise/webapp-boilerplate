@@ -17,7 +17,7 @@ async def test_health_response_sets_default_csp(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_verify_email_html_feedback_uses_relaxed_inline_csp(
+async def test_verify_email_html_feedback_uses_default_csp(
     client: AsyncClient,
 ) -> None:
     response = await client.get(
@@ -28,6 +28,7 @@ async def test_verify_email_html_feedback_uses_relaxed_inline_csp(
     assert response.status_code == 400
     csp = response.headers.get("content-security-policy")
     assert csp is not None
-    assert "script-src 'self' 'unsafe-inline'" in csp
-    assert "style-src 'self' 'unsafe-inline'" in csp
+    assert "script-src 'self'" in csp
+    assert "style-src 'self'" in csp
     assert "frame-ancestors 'none'" in csp
+    assert "'unsafe-inline'" not in csp

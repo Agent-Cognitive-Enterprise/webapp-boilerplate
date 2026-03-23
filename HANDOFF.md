@@ -16,12 +16,13 @@ Cookie-backed browser auth, CSRF protection, and backend CSP headers are impleme
 - Re-ran the full backend suite, frontend unit tests, frontend lint/build, and full Playwright browser suite successfully after the CSRF change.
 - Added backend CSP handling with a strict default policy plus a narrower inline-script/style exception for the backend-served verification feedback HTML page.
 - Added CSP regression coverage in `backend/tests/api/test_security_headers.py` and updated the email-verification e2e assertions.
+- Removed the verification feedback page's inline script/style so it now runs under the default backend CSP with no route-specific exception.
 
 ## Current status
-Browser auth is cookie-backed and no longer depends on `localStorage` bearer tokens. Unsafe requests that rely on auth cookies now require a trusted `Origin` or `Referer`, while bearer-header API clients still work without CSRF checks. Backend responses also emit CSP headers, with a dedicated exception for the inline verification feedback page. Verification is green from the current tree: backend `175` tests passed, frontend `139` Vitest tests passed, frontend lint/build passed, and browser `19` tests passed.
+Browser auth is cookie-backed and no longer depends on `localStorage` bearer tokens. Unsafe requests that rely on auth cookies now require a trusted `Origin` or `Referer`, while bearer-header API clients still work without CSRF checks. Backend responses emit a single default CSP with no special-case inline exception. Backend verification is green from the current tree: `175` tests passed.
 
 ## Next step
-Next meaningful step is removing the inline script/style exception from the verification feedback page by converting it to nonce-free/static-safe markup, then tightening that route onto the default CSP.
+Next meaningful step is operational rather than code-level: make sure the frontend deployment path ships a matching CSP at the reverse proxy or static host layer, since FastAPI does not serve the Vite app in production.
 
 ## Important files
 - AGENTS.md
@@ -43,7 +44,7 @@ Next meaningful step is removing the inline script/style exception from the veri
 - backend/tests/api/test_security_headers.py
 
 ## Notes for next session
-The important behavioral changes are: browser auth no longer survives by writing a JWT into `localStorage`, unsafe cookie-authenticated requests now need a trusted `Origin` or `Referer`, and backend responses include CSP headers. The only intentional CSP exception is the backend-served `/auth/verify-email` HTML feedback page, which still uses inline script/style for the countdown redirect. Tests or helpers that use real cookies must model browser origins when exercising refresh/logout or other unsafe endpoints. Header-based bearer auth still exists for non-browser clients and API-style tests. Browser pytest still needs to run serially because `frontend/tests/conftest.py` shares `frontend_e2e.db`.
+The important behavioral changes are: browser auth no longer survives by writing a JWT into `localStorage`, unsafe cookie-authenticated requests now need a trusted `Origin` or `Referer`, and backend responses include a single default CSP with no inline-script/style exception. Tests or helpers that use real cookies must model browser origins when exercising refresh/logout or other unsafe endpoints. Header-based bearer auth still exists for non-browser clients and API-style tests. Browser pytest still needs to run serially because `frontend/tests/conftest.py` shares `frontend_e2e.db`.
 
 ## Last updated
-2026-03-22 23:43 UTC
+2026-03-22 23:59 UTC

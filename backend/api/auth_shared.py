@@ -101,80 +101,12 @@ def verification_feedback_html(message: str, login_url: str) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="refresh" content="10;url={safe_login_url}" />
   <title>Email Verification</title>
-  <style>
-    :root {{
-      color-scheme: light;
-      --bg-top: #eef2ff;
-      --bg-bottom: #f8fafc;
-      --card-bg: #ffffff;
-      --text: #0f172a;
-      --subtle: #475569;
-      --border: #dbe3f3;
-      --shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
-    }}
-    * {{ box-sizing: border-box; }}
-    body {{
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(160deg, var(--bg-top), var(--bg-bottom));
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      color: var(--text);
-      padding: 1rem;
-    }}
-    .card {{
-      width: min(640px, 100%);
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      box-shadow: var(--shadow);
-      padding: 2rem 1.5rem;
-      text-align: center;
-    }}
-    h1 {{
-      margin: 0;
-      font-size: 1.5rem;
-      font-weight: 700;
-    }}
-    p.message {{
-      margin: 1rem 0 0;
-      font-size: 1.05rem;
-      color: var(--subtle);
-    }}
-    p.redirect {{
-      margin: 1.25rem 0 0;
-      font-size: 0.95rem;
-      color: var(--subtle);
-    }}
-    a {{
-      color: #1d4ed8;
-      text-decoration: none;
-      font-weight: 600;
-    }}
-    a:hover {{
-      text-decoration: underline;
-    }}
-  </style>
 </head>
 <body>
-  <main class="card">
+  <main>
     <h1>Email Verification</h1>
-    <p class="message">{safe_message}</p>
-    <p class="redirect">Redirecting to login in <span id="countdown">10</span> seconds. <a href="{safe_login_url}">Go now</a>.</p>
+    <p>{safe_message}</p>
+    <p>Redirecting to login in 10 seconds. <a href="{safe_login_url}">Go now</a>.</p>
   </main>
-  <script>
-    let remaining = 10;
-    const countdown = document.getElementById("countdown");
-    const loginUrl = {safe_login_url!r};
-    const timer = setInterval(() => {{
-      remaining -= 1;
-      if (countdown) countdown.textContent = String(Math.max(remaining, 0));
-      if (remaining <= 0) {{
-        clearInterval(timer);
-        window.location.replace(loginUrl);
-      }}
-    }}, 1000);
-  </script>
 </body>
 </html>"""
