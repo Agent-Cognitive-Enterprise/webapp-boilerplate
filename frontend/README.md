@@ -50,7 +50,7 @@ Modern React + TypeScript frontend for the webapp-boilerplate authentication and
 - **Multilingual Support** - UI labels in multiple languages with translation submission
 
 ### Security Features
-- Access and refresh tokens stored in HttpOnly cookies for browser sessions
+- Access, refresh, and session-binding tokens stored in HttpOnly cookies for browser sessions
 - Automatic token refresh on expiry
 - Backend notification on logout for token revocation
 - Protected routes requiring authentication
@@ -110,6 +110,7 @@ Runs frontend unit and component tests for routes, API helpers, components, and 
 The supported browser-level tests for this boilerplate are:
 - `frontend/tests/test_setup_initialization_e2e.py`
 - `frontend/tests/test_auth_and_admin_e2e.py`
+- `frontend/tests/test_password_reset_and_verification_e2e.py`
 
 Together they exercise:
 - first-run setup
@@ -119,15 +120,18 @@ Together they exercise:
 - protected-route redirect behavior
 - login, profile, and logout flow
 - admin locale changes reflected on the public login screen
+- forgot-password and reset-password journeys
+- email-verification journeys and invalid-token browser feedback
 
 To run it:
 ```bash
 cd backend
-.venv/bin/playwright install --with-deps chromium
+.venv/bin/python -m playwright install --with-deps chromium
 PYTHONPATH=..:. .venv/bin/pytest ../frontend/tests -q
 ```
 
 The test suite starts a dedicated migrated backend database plus frontend dev server automatically.
+Run it serially; `frontend/tests/conftest.py` shares `backend/frontend_e2e.db`.
 The same browser suite now runs in GitHub Actions CI on pushes and pull requests to `main`.
 
 #### Visual Review Artifacts (Screenshots + Checklist)
@@ -157,24 +161,34 @@ frontend/
 │   ├── api/              # API client and endpoints
 │   │   ├── api.ts        # Axios instance with interceptors
 │   │   ├── auth.ts       # Authentication API calls
+│   │   ├── adminSettings.ts
+│   │   ├── appConfig.ts
+│   │   ├── setup.ts
 │   │   ├── types.ts      # TypeScript type definitions
-│   │   └── uiLabel.ts    # Multilingual labels API
+│   │   └── userSettings.ts
 │   ├── components/       # React components
-│   │   ├── Dashboard.tsx           # User dashboard
-│   │   ├── Login.tsx               # Login page
-│   │   ├── Register.tsx            # Registration page
-│   │   ├── RequireAuth.tsx         # Protected route wrapper
-│   │   ├── UiLabel.tsx             # Multilingual label component
-│   │   ├── UserManagement.tsx      # Admin user management
-│   │   └── UserProfile.tsx         # User profile page
+│   │   ├── AdminSettings.tsx
+│   │   ├── Dashboard.tsx
+│   │   ├── ForgotPassword.tsx
+│   │   ├── Login.tsx
+│   │   ├── Register.tsx
+│   │   ├── RequireAuth.tsx
+│   │   ├── ResetPassword.tsx
+│   │   ├── SetupWizard.tsx
+│   │   ├── UiLabel.tsx
+│   │   ├── UserManagement.tsx
+│   │   └── UserProfile.tsx
 │   ├── contexts/         # React contexts
-│   │   ├── AuthContext.tsx         # Authentication state
-│   │   └── UiLabelProvider.tsx     # Multilingual labels
+│   │   ├── AuthContext.tsx
+│   │   └── UiLabelProvider.tsx
 │   ├── hooks/            # Custom React hooks
-│   │   ├── useKeepUserLoggedIn.ts  # Auto token refresh
-│   │   └── useT.ts                 # Translation hook
-│   ├── utils/            # Utility functions
-│   ├── App.tsx           # Main app component with routing
+│   │   ├── useBackendHealth.ts
+│   │   ├── useKeepUserLoggedIn.ts
+│   │   ├── useSetupBootstrap.ts
+│   │   └── useT.ts
+│   ├── auth/             # Session invalidation events
+│   ├── i18n/             # Locale and direction helpers
+│   ├── App.tsx           # Setup-mode bootstrapping and top-level redirects
 │   └── main.tsx          # App entry point
 ├── public/               # Static assets
 ├── tests/                # E2E tests (Python/Playwright)
@@ -197,13 +211,16 @@ VITE_BACKEND_POLL_INTERVAL=10000
 
 | Route | Component | Auth Required | Admin Only | Description |
 |-------|-----------|---------------|------------|-------------|
-| `/` | Dashboard | ✅ | ❌ | Redirects to dashboard |
+| `/` | Redirect | ❌ | ❌ | Redirects to `/setup` before initialization, otherwise to `/dashboard` |
 | `/register` | Register | ❌ | ❌ | User registration |
 | `/login` | Login | ❌ | ❌ | User login |
+| `/forgot-password` | ForgotPassword | ❌ | ❌ | Start password reset flow |
+| `/reset-password` | ResetPassword | ❌ | ❌ | Complete password reset flow |
 | `/setup` | SetupWizard | ❌ | ❌ | One-time first-run initialization |
 | `/dashboard` | Dashboard | ✅ | ❌ | User homepage |
 | `/profile` | UserProfile | ✅ | ❌ | User profile management |
 | `/users` | UserManagement | ✅ | ✅ | Admin user management |
+| `/admin/settings` | AdminSettings | ✅ | ✅ | Admin configuration and locale settings |
 
 ## First-run initialization
 
@@ -222,7 +239,7 @@ Set the backend deploy secret `INITIAL_SETUP_TOKEN`, then complete `/setup` in t
 1. User enters email and password
 2. Frontend calls `/auth/token` endpoint
 3. Backend sets access, refresh, and session-binding tokens in HttpOnly cookies for browser sessions
-4. Frontend fetches `/users/me/` to hydrate authenticated user state
+4. Frontend fetches `/users/me/` to hydrate authenticated user state instead of persisting bearer tokens in `localStorage`
 5. User redirected to dashboard
 
 ### Authenticated Requests
@@ -264,10 +281,11 @@ Labels are:
 ## Security Best Practices
 
 ✅ **Implemented:**
-- Cookie-backed browser sessions with HttpOnly access and refresh tokens
+- Cookie-backed browser sessions with HttpOnly access, refresh, and session-binding cookies
 - Refresh-session binding via a separate HttpOnly cookie
 - Server-side CSRF protection for unsafe cookie-authenticated requests via trusted `Origin`/`Referer` validation
 - Backend CSP headers for API responses and backend-served verification HTML
+- Production frontend CSP / reverse-proxy requirements documented in `../DEPLOYMENT.md`
 - Automatic token refresh
 - Proper logout with backend notification
 - Protected routes with RequireAuth wrapper
@@ -295,9 +313,9 @@ Labels are:
 ### Adding New Pages
 
 1. Create component in `src/components/`
-2. Add route in `src/App.tsx`
+2. Add route in `src/components/InitializedAppShell.tsx` (and keep `src/App.tsx` focused on setup-mode bootstrapping)
 3. Wrap with `<RequireAuth>` if authentication required
-4. Add navigation link in App.tsx nav
+4. Add navigation link in `src/components/appShell/AppShellNav.tsx` if the page should appear in the shell navigation
 
 ### API Integration
 
@@ -321,7 +339,7 @@ The API client automatically:
 ## Troubleshooting
 
 **Issue:** Cannot connect to backend
-- **Solution:** Check `VITE_API_BASE_URL` in `.env`
+- **Solution:** Check `VITE_API_URL` in `.env`
 - **Solution:** Ensure backend is running on specified URL
 
 **Issue:** Logout doesn't work

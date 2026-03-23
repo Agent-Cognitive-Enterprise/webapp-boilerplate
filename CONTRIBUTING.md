@@ -22,9 +22,9 @@ Thanks for contributing to `webapp-boilerplate`.
 
 Run the relevant checks before opening a pull request:
 
-1. Backend tests: `cd backend && PYTHONPATH=. pytest -q`
-2. Frontend tests: `cd frontend && npm test`
-3. Frontend build: `cd frontend && npm run build`
+1. Backend verification: `make verify-backend`
+2. Frontend lint + unit tests + build: `cd frontend && npm run lint && npm test && npm run build`
+3. For browser-facing changes to auth, setup, navigation, or deployment behavior: `cd backend && PYTHONPATH=..:. .venv/bin/pytest ../frontend/tests -q`
 
 If a check cannot run in your environment, explain why in the PR.
 

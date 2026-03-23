@@ -10,8 +10,7 @@ Auth/setup test defaults live in `backend/tests/test_env.py`.
 
 - `tests/utils`, `tests/auth`, `tests/services`: focused unit-level tests.
 - `tests/api`: endpoint-focused API/integration tests (single-endpoint behavior, validation, contract checks).
-- `tests/e2e`: end-to-end backend flows across multiple endpoints and state transitions.
-  Current e2e flows cover:
+- `tests/e2e`: end-to-end backend flows across multiple endpoints and state transitions. Current e2e flows cover:
   - setup guard + initialization lock behavior,
   - auth lifecycle (register/login/refresh/logout),
   - refresh token replay security,
@@ -20,6 +19,8 @@ Auth/setup test defaults live in `backend/tests/test_env.py`.
   - setup/admin SMTP connectivity checks,
   - admin settings lifecycle updates,
   - admin user management lifecycle.
+- `tests/scripts`: regression tests for repository helper scripts and deployment examples.
+- `tests/ai`: focused coverage for the AI translation agent and OpenAI client wrapper behavior.
 - `tests/i18n`: localization utility tests (locale resolution, catalog fallback behavior).
 
 Run backend e2e tests:
@@ -31,7 +32,7 @@ PYTHONPATH=. .venv/bin/pytest tests/e2e -q
 Run the CI test-env drift guard locally:
 
 ```bash
-python scripts/check_ci_test_env.py
+.venv/bin/python scripts/check_ci_test_env.py
 ```
 
 Run i18n audit:

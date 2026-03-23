@@ -4,7 +4,7 @@
 1. User submits: `full_name`, `email`, `password`
 2. Backend validates password strength (8+ chars, uppercase, lowercase, digit, special char)
 3. Backend checks if email already exists
-4. Backend hashes password with bcrypt
+4. Backend hashes the password with bcrypt using a SHA-256 prehash, while retaining verification compatibility for legacy plain-bcrypt records
 5. Backend checks whether SMTP email settings are configured in system settings
 6. Backend creates user in database
 7. If SMTP is configured:
@@ -44,22 +44,23 @@
 1. User submits: `email`, `password`
 2. Backend authenticates credentials
 3. Backend blocks login when `email_verified=false` (403)
-3. Backend generates:
+4. Backend generates:
    - **Access Token** (JWT, short-lived, e.g., 15 minutes)
-   - **Refresh Token** (random token, long-lived, e.g., 7 days)
-4. Backend stores refresh token in database with:
+   - **Refresh Token** (random token, long-lived, e.g., 14 days by default)
+5. Backend stores refresh token in database with:
    - User ID
    - Token hash
    - Session-binding cookie hash
    - Client IP + User-Agent for audit metadata
    - Expiry date
-5. Backend returns:
-   - Access token in response body for non-browser/API clients
-   - Access token in HttpOnly cookie for browser sessions
-   - Session-binding token in HttpOnly cookie for browser sessions
-   - Refresh token in HttpOnly cookie
-6. Frontend treats the browser session as cookie-backed and derives auth state from `/users/me/`
-7. User redirected to dashboard
+6. Backend returns:
+   - Access token in the JSON response body
+   - Access token in an HttpOnly cookie for browser sessions
+   - Session-binding token in a separate HttpOnly cookie for browser sessions
+   - Refresh token in an HttpOnly cookie
+   - No refresh token in the response body
+7. Frontend treats the browser session as cookie-backed and derives auth state from `/users/me/`
+8. User redirected to dashboard
 
 ## Authenticated Requests
 1. Browser frontend sends authenticated requests with cookies (`withCredentials: true`)
@@ -76,7 +77,7 @@
    - Validates token hash exists in database
    - Checks token not revoked or expired
    - **Rotates token** (marks old as used, generates new)
-4. Backend rotates both browser cookies and returns a new access token in the response body for non-browser/API clients
+4. Backend rotates the browser cookies and returns a new access token in the response body
 5. Frontend retries the original request after refresh succeeds
 
 ## Logout
@@ -121,8 +122,8 @@
 | Token Type | Storage Location | Lifespan | Purpose |
 |------------|-----------------|----------|---------|
 | Access Token | HttpOnly Cookie (browser) / response body (API clients) | 15 min | API authentication |
-| Session Binding | HttpOnly Cookie | 15 min, rotated with browser session | Refresh-session binding |
-| Refresh Token | HttpOnly Cookie | 7 days | Get new access tokens |
+| Session Binding | HttpOnly Cookie | 15 min by default, rotated with the access cookie | Refresh-session binding |
+| Refresh Token | HttpOnly Cookie | 14 days by default | Get new access tokens |
 
 **Why this approach?**
 - Browser JavaScript does not need direct access to bearer tokens
@@ -150,8 +151,8 @@
 - Browser auth relies on cookies, so state-changing requests need CSRF mitigation
 - SameSite=Lax reduces ambient cross-site requests but is not a complete CSRF defense
 - Unsafe cookie-authenticated requests are rejected unless `Origin` or `Referer` matches a trusted frontend/backend origin
-- SameSite=Lax on cookies
-- Explicit origin checking via CORS
+- Trusted `Origin`/`Referer` validation is the actual server-side CSRF gate
+- Exact-origin CORS is still required for browser credentialed requests, but it is not the CSRF defense by itself
 
 ## Rate Limiting
 
