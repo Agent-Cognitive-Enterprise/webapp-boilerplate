@@ -15,6 +15,7 @@ See the LICENSE file (Apache License 2.0) for the full terms.
 - [Tech Stack](#tech-stack)
 - [Repository Layout](#repository-layout)
 - [Quick Start](#quick-start)
+- [Deployment](#deployment)
 - [Environment Variables](#environment-variables)
 - [Common Commands](#common-commands)
 - [One-Command Development](#one-command-development)
@@ -28,6 +29,7 @@ See the LICENSE file (Apache License 2.0) for the full terms.
 - FastAPI backend with async SQLModel/SQLAlchemy
 - SQLite support for local development and small single-node deployments
 - PostgreSQL support for standard production deployments
+- Deployment examples for SQLite single-node and PostgreSQL-backed production
 - React 19 + TypeScript frontend (Vite)
 - First-run initialization flow (`/setup`) protected by one-time setup token
 - JWT access tokens + rotating refresh tokens with HttpOnly session-binding cookies
@@ -167,6 +169,16 @@ Database support:
 - `VITE_BACKEND_POLL_INTERVAL` (default: `10000`)
 
 See [frontend/.env.example](frontend/.env.example).
+
+## Deployment
+
+For supported production topologies and concrete deployment examples, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+Summary:
+
+- SQLite is still a valid production path for small single-node deployments.
+- PostgreSQL is the recommended path for standard production deployments.
+- The deployment examples cover backend plus database; deploy the frontend separately as a static build.
 
 ## Common Commands
 
