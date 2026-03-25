@@ -110,7 +110,13 @@ python main.py
 ```
 
 Backend runs on `http://localhost:8000`.
-The backend does not create or mutate schema on startup; apply Alembic migrations before running the app.
+Direct `python main.py` runs perform a startup migration preflight only in these cases:
+
+- `APP_ENV=development` or `APP_ENV=dev`
+- `AUTO_MIGRATE_ON_START=true`
+- `AUTO_MIGRATE_ON_START=auto` with SQLite and a missing DB file
+
+Set `AUTO_MIGRATE_ON_START=false` to disable that preflight. Import-based server paths such as `uvicorn main:app` do not auto-migrate; run `alembic upgrade head` yourself before serving traffic in those paths.
 
 Database choices:
 
@@ -147,6 +153,7 @@ Core variables:
 - `DATABASE_URL` (recommended for PostgreSQL and other non-default deployments)
 - `DB_TYPE` (compatibility fallback; default: `sqlite`)
 - `SQLITE_DB_PATH` (default: `app.db`)
+- `AUTO_MIGRATE_ON_START` (`auto|true|false`, default: `auto`)
 - `AUTH_SECRET_KEY` (required)
 - `INITIAL_SETUP_TOKEN` (required)
 - `CORS_ALLOW_ORIGINS` (default: `http://localhost:5173`)
@@ -162,6 +169,8 @@ Database support:
 - SQLite remains supported for local development and small single-node production deployments.
 - PostgreSQL is supported and recommended for standard production deployments.
 - The application resolves both runtime and Alembic database URLs from the same environment settings.
+- Direct `python main.py` runs normalize relative SQLite paths before preflight so Alembic and the app target the same DB file.
+- If the schema is missing or out of date at runtime, `GET /health` returns `503` with a migration hint instead of throwing an internal traceback.
 
 ### Frontend (`frontend/.env`)
 
@@ -270,7 +279,7 @@ This prints the commands to run:
 
 ## API Surface (High Level)
 
-- Health: `GET /health`
+- Health: `GET /health` (`503` with a migration hint when the DB schema is missing or out of date)
 - Setup: `GET /setup/status`, `POST /setup`, `POST /setup/email/check`
 - Auth: `POST /auth/register`, `POST /auth/token`, `POST /auth/refresh`, `POST /auth/logout`
 - Password reset: `POST /auth/forgot-password`, `POST /auth/reset-password`

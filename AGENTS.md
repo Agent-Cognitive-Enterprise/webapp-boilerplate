@@ -93,7 +93,14 @@ For UI work, verify as applicable:
 - semantic correctness,
 - user-visible outcome.
 
-### 3.4 Regression rule
+### 3.4 Frontend screenshot rule
+
+For any frontend visual, layout, or styling change:
+- capture a before screenshot before editing,
+- capture an after screenshot after editing,
+- use the screenshots to verify the intended visual change, not just DOM structure.
+
+### 3.5 Regression rule
 
 Every bug fix should add or update a regression test unless there is a documented reason not to.
 

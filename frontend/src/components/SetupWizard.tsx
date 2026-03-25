@@ -1,6 +1,7 @@
 import {Link} from "react-router-dom";
 import {useSetupWizardForm} from "./setupWizard/useSetupWizardForm";
 import {SetupWizardForm} from "./setupWizard/SetupWizardForm";
+import {SetupWizardShell} from "./setupWizard/SetupWizardShell";
 import type {SetupEmailDefaults} from "./setupWizard/types";
 
 type SetupWizardProps = {
@@ -20,8 +21,11 @@ export default function SetupWizard({isInitialized, onSetupComplete, seedLocales
 
     if (isInitialized) {
         return (
-            <div className="ace-page-shell flex items-center justify-center">
-                <div className="ace-card ace-card-strong ace-card-pad w-full max-w-xl">
+            <SetupWizardShell>
+                <div
+                    data-testid="setup-wizard-card"
+                    className="ace-card ace-card-pad w-full max-w-xl border-white/35 bg-white/72 shadow-[0_24px_70px_rgba(15,23,42,0.24)] backdrop-blur-xl"
+                >
                     <h1 className="text-2xl font-semibold text-gray-900">{copy.alreadyConfiguredTitle}</h1>
                     <p className="mt-3 text-gray-700">{copy.alreadyConfiguredDescription}</p>
                     <Link
@@ -31,9 +35,13 @@ export default function SetupWizard({isInitialized, onSetupComplete, seedLocales
                         {copy.goToLogin}
                     </Link>
                 </div>
-            </div>
+            </SetupWizardShell>
         );
     }
 
-    return <SetupWizardForm form={form} />;
+    return (
+        <SetupWizardShell>
+            <SetupWizardForm form={form} />
+        </SetupWizardShell>
+    );
 }

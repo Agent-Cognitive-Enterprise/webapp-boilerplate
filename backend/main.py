@@ -140,7 +140,10 @@ app.include_router(ui_label_router)
 app.include_router(admin_settings_router)
 
 
-if __name__ == "__main__":
+def run() -> None:
+    from services.startup_migrations import run_startup_migration_preflight
+
+    run_startup_migration_preflight()
     logger.info("Starting server...")
     uvicorn.run(
         "main:app",
@@ -149,3 +152,7 @@ if __name__ == "__main__":
         log_config=None,
         log_level="debug",
     )
+
+
+if __name__ == "__main__":
+    run()

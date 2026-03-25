@@ -48,11 +48,42 @@ describe("SetupWizard", () => {
         renderWizard();
 
         expect(screen.getByText("First-Run Setup")).toBeInTheDocument();
+        expect(screen.getByTestId("setup-background-shell")).toBeInTheDocument();
         expect(screen.getByText("Initial setup token")).toBeInTheDocument();
         expect(screen.getByText("Site name")).toBeInTheDocument();
         expect(screen.getByText("Supported locales")).toBeInTheDocument();
         expect(screen.getByText("Admin email")).toBeInTheDocument();
         expect(screen.getByText("Admin password")).toBeInTheDocument();
+    });
+
+    it("places setup token and site name on their own rows", () => {
+        renderWizard();
+
+        expect(screen.getByLabelText("Initial setup token").closest("label")).toHaveClass("md:col-span-2");
+        expect(screen.getByLabelText("Site name").closest("label")).toHaveClass("md:col-span-2");
+    });
+
+    it("renders the setup form as a frosted glass card over the beach shell", () => {
+        renderWizard();
+
+        expect(screen.getByTestId("setup-background-shell")).toBeInTheDocument();
+        expect(screen.getByTestId("setup-shell-center")).toHaveClass("my-auto", "justify-center");
+        expect(screen.getByTestId("setup-wizard-card")).toHaveClass("backdrop-blur-xl", "bg-white/72");
+    });
+
+    it("keeps STARTTLS and the email-check button in the same control row", () => {
+        renderWizard();
+
+        const row = screen.getByTestId("smtp-check-row");
+        expect(row).toHaveClass("sm:flex-row", "sm:justify-between");
+        expect(screen.getByLabelText("Use STARTTLS").closest("[data-testid='smtp-check-row']")).toBe(row);
+        expect(screen.getByRole("button", {name: "Check email settings"}).closest("[data-testid='smtp-check-row']")).toBe(row);
+    });
+
+    it("does not reserve extra feedback space under the email check row when no status is present", () => {
+        renderWizard();
+
+        expect(screen.queryByTestId("smtp-check-feedback")).not.toBeInTheDocument();
     });
 
     it("shows validation errors for invalid input", async () => {
@@ -163,6 +194,8 @@ describe("SetupWizard", () => {
     it("shows configured message when already initialized", () => {
         renderWizard(true);
 
+        expect(screen.getByTestId("setup-background-shell")).toBeInTheDocument();
+        expect(screen.getByTestId("setup-wizard-card")).toHaveClass("backdrop-blur-xl", "bg-white/72");
         expect(screen.getByText("Application Already Configured")).toBeInTheDocument();
         expect(screen.getByText("Go to login")).toBeInTheDocument();
     });

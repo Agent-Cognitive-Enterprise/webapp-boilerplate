@@ -62,6 +62,15 @@ It expects you to:
 2. run Alembic migrations before or during startup
 3. expose the app behind HTTPS in real production
 
+Direct `python main.py` runs are intentionally narrower than deployment server paths:
+
+- in `APP_ENV=development` or `APP_ENV=dev`, the direct entrypoint runs `alembic upgrade head` before starting the server
+- in production-like envs, the direct entrypoint skips auto-migration by default
+- exception: with `AUTO_MIGRATE_ON_START=auto`, a missing SQLite DB file still triggers a direct-run preflight migration
+- `AUTO_MIGRATE_ON_START=true` forces the preflight, and `AUTO_MIGRATE_ON_START=false` disables it
+
+Import-based paths such as `uvicorn main:app` do not auto-migrate. Keep explicit migration steps in deployment automation, as the compose examples already do.
+
 ## SQLite deployment example
 
 Files:
@@ -92,6 +101,7 @@ Notes:
 - The SQLite database lives at `/data/app.db` inside the backend container.
 - The named Docker volume `sqlite_data` is the persistence boundary.
 - Do not scale this backend service horizontally while using SQLite.
+- If schema drift still reaches runtime, `GET /health` returns `503` with a migration hint instead of an internal traceback.
 
 ## PostgreSQL deployment example
 
@@ -120,6 +130,7 @@ Notes:
 - The backend waits for PostgreSQL health before starting.
 - The backend uses `DATABASE_URL=postgresql://...`; the app converts that to the async runtime driver automatically.
 - The named Docker volume `postgres_data` persists the database state.
+- If migrations are skipped or incomplete, `GET /health` returns `503` with a migration hint until the schema is corrected.
 
 ## Frontend deployment
 

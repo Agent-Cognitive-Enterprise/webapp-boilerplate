@@ -5,6 +5,8 @@ from fastapi import (
     Depends,
     HTTPException,
 )
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 
@@ -16,10 +18,30 @@ from utils.db import get_session
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+SCHEMA_UNAVAILABLE_HINT = (
+    "Database schema is unavailable or out of date. "
+    "Run `alembic upgrade head` before serving requests."
+)
+SCHEMA_ERROR_PATTERNS = (
+    "no such table",
+    "no such column",
+    "has no column named",
+    "undefinedtable",
+    "undefinedcolumn",
+)
 
 
 class AppVersion:
     version: str = "0.1.6"
+
+
+def _is_schema_unavailable_error(exc: SQLAlchemyError) -> bool:
+    message = str(exc).lower()
+    if any(pattern in message for pattern in SCHEMA_ERROR_PATTERNS):
+        return True
+    if "relation " in message and "does not exist" in message:
+        return True
+    return "column " in message and "does not exist" in message
 
 
 @router.get("/health")
@@ -46,7 +68,22 @@ async def health_check(
             "Database session is not active",
         )
 
-    settings = await get_system_settings_row(session=session, create_if_missing=False)
+    try:
+        settings = await get_system_settings_row(session=session, create_if_missing=False)
+    except SQLAlchemyError as exc:
+        if not _is_schema_unavailable_error(exc):
+            raise
+
+        logger.warning("Health check failed because the database schema is unavailable: %s", exc)
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "Unavailable",
+                "detail": SCHEMA_UNAVAILABLE_HINT,
+                "database_driver": driver_name,
+            },
+        )
+
     app_name = APP_NAME
     if settings and settings.site_name and settings.site_name.strip():
         app_name = settings.site_name.strip()
