@@ -24,6 +24,7 @@ from utils.db import get_session
 
 
 logger = logging.getLogger(__name__)
+HSTS_HEADER_VALUE = "max-age=31536000; includeSubDomains"
 
 setup_logging()
 logging.basicConfig(level=logging.CRITICAL)
@@ -40,15 +41,19 @@ app = FastAPI(
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc):
+    errors = exc.errors()
     logger.warning(
         "Validation error for %s (%s): %s",
         request.url.path,
         request.method,
-        exc.errors(),
+        errors,
+    )
+    status_code = (
+        400 if any(error.get("type") == "json_invalid" for error in errors) else 422
     )
     return JSONResponse(
-        status_code=422,
-        content={"detail": exc.errors()},
+        status_code=status_code,
+        content={"detail": errors},
     )
 
 
@@ -73,6 +78,14 @@ async def _get_setup_guard_initialized_state() -> bool:
 
     session = await dependency_result
     return await is_initialized(session=session)
+
+
+def _request_is_https(request: Request) -> bool:
+    forwarded_proto = request.headers.get("x-forwarded-proto", "")
+    if forwarded_proto:
+        first_hop_proto = forwarded_proto.split(",", 1)[0].strip().lower()
+        return first_hop_proto == "https"
+    return request.url.scheme == "https"
 
 
 @app.middleware("http")
@@ -107,6 +120,8 @@ async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
 
     # Security headers
+    if _request_is_https(request):
+        response.headers["Strict-Transport-Security"] = HSTS_HEADER_VALUE
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"

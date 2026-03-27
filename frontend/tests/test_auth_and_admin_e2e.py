@@ -89,7 +89,7 @@ def test_admin_supported_locale_change_is_visible_on_login_page(visual_page):
 
     page.goto(f"{FRONTEND_BASE_URL}/admin/settings")
     expect(page.get_by_text("Admin settings")).to_be_visible()
-    page.get_by_label("Supported locales").fill("en, fr")
+    page.get_by_label(re.compile("supported locales", re.IGNORECASE)).fill("en, fr")
     page.get_by_role("button", name="Save settings").click()
     expect(page).to_have_url(re.compile(".*/admin/settings$"))
     snap("admin_settings_after_locale_save")

@@ -285,6 +285,7 @@ Labels are:
 - Refresh-session binding via a separate HttpOnly cookie
 - Server-side CSRF protection for unsafe cookie-authenticated requests via trusted `Origin`/`Referer` validation
 - Backend CSP headers for API responses and backend-served verification HTML
+- Vite dev/preview security headers for SPA routes (`X-Frame-Options`, CSP `frame-ancestors 'none'`, and HSTS)
 - Production frontend CSP / reverse-proxy requirements documented in `../DEPLOYMENT.md`
 - Automatic token refresh
 - Proper logout with backend notification

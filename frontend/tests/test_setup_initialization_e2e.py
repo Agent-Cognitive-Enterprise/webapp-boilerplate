@@ -115,7 +115,7 @@ def test_admin_settings_has_no_default_locale_selector_and_saves_supported_local
     # Default-locale chips were removed from Admin settings UI.
     assert page.get_by_role("button", name="ru", exact=True).count() == 0
 
-    page.get_by_label("Supported locales").fill("ru, en")
+    page.get_by_label(re.compile("supported locales", re.IGNORECASE)).fill("ru, en")
     snap("admin_supported_locales_changed")
 
     page.locator("form button[type='submit']").click()

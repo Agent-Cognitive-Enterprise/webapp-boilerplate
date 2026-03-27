@@ -1,54 +1,41 @@
 # HANDOFF
 
 ## Current objective
-Keep direct backend startup safe and predictable for SQLite while preserving explicit migration control for import-based and production deployment paths.
+Keep request validation and security-header behavior consistent across the FastAPI backend and the Vite-hosted frontend routes.
 
 ## Completed in this session
-- Added `backend/services/startup_migrations.py` to decide and run direct-start Alembic preflight for `python main.py` only.
-- Wired `backend/main.py` to call the preflight before `uvicorn.run(...)` in the direct entrypoint.
-- Normalized SQLite direct-run targets to absolute paths before preflight so Alembic and runtime point at the same DB file.
-- Updated `backend/api/health.py` so schema-missing or schema-drift errors return `503` with a clear `alembic upgrade head` hint instead of propagating an ASGI traceback.
-- Added regression coverage for startup-migration policy, direct-entrypoint ordering, `/health` degraded behavior, and real-process migrated/unmigrated SQLite smoke cases.
-- Updated `backend/.env.example`, `README.md`, and `DEPLOYMENT.md` to document `AUTO_MIGRATE_ON_START`, direct-run behavior, and the `/health` degradation contract.
-- Ran full backend verification successfully with `make verify-backend` (`204 passed`, Ruff clean, mypy clean).
-- Diagnosed the frontend "Backend is offline" overlay as a local CORS mismatch: `frontend/.env` points at `http://192.168.1.160:8000`, while `backend/.env` only allowed `http://localhost:5173`. Updated local `backend/.env` to allow both frontend origins; backend restart still required to apply it.
-- Updated the first-run setup form so `Initial setup token` and `Site name` each occupy their own row in the main form grid.
-- Restored the first-run setup beach background by wrapping the setup flow in a dedicated setup shell and switched the setup card to a more translucent frosted-glass treatment.
-- Moved `Use STARTTLS` and `Check email settings` into the same control row, with the toggle on the left and the button aligned on the right.
-- Reworked the setup shell to use a dedicated centering wrapper with auto vertical margins instead of the shared page padding, so the frosted-glass card centers when space allows and falls back to scroll-safe mobile positioning when the form is taller than the viewport.
-- Tightened setup-form mobile spacing and title sizing so more of the first-run form fits on phone screens without losing readability.
-- Removed the empty feedback wrapper under `Check email settings` so the setup form no longer leaves dead space below that control when no status message is present.
-- Added the repository rule in `AGENTS.md` that frontend visual/layout work must include before-and-after screenshots.
-- Added frontend regression coverage for the setup layout/shell updates and re-ran frontend verification successfully with `npm run lint` and `npm test` (`39` files, `143` tests passed).
+- Updated `backend/main.py` so malformed JSON request bodies return `400 Bad Request` while ordinary schema validation errors remain `422`.
+- Added conditional backend HSTS emission for HTTPS or `X-Forwarded-Proto=https` requests while preserving the existing CSP and clickjacking headers.
+- Added backend regression coverage for malformed JSON handling, clickjacking headers on protected routes, and HSTS behavior.
+- Updated `frontend/vite.config.ts` so Vite dev/preview responses include `X-Frame-Options`, CSP with `frame-ancestors 'none'`, and HSTS across SPA routes.
+- Added frontend route-level header coverage in `frontend/tests/test_security_headers_e2e.py`.
+- Hardened two browser tests to match the admin supported-locales field case-insensitively because background label generation can vary capitalization.
+- Updated `frontend/tests/conftest.py` to force empty AI provider keys during browser tests so the suite no longer depends on live OpenAI/DeepSeek traffic or rate limits.
+- Updated `README.md`, `frontend/README.md`, and `DEPLOYMENT.md` to document the new malformed-JSON and security-header behavior.
+- Ran full backend verification plus full frontend lint/unit/build/browser verification successfully.
 
 ## Current status
-Direct `python main.py` runs now preflight migrations when `APP_ENV` is `development`/`dev`, when `AUTO_MIGRATE_ON_START=true`, or when `AUTO_MIGRATE_ON_START=auto` and the SQLite DB file is missing. Production-like direct runs skip auto-migration by default unless that missing-file SQLite exception or the explicit override applies. Import-based paths such as `uvicorn main:app` still do not auto-migrate. If runtime reaches `/health` with a missing or mismatched schema, the endpoint now returns `503` plus a migration hint and no traceback. Local frontend/backend CORS is configured to support both `localhost` and the current LAN dev origin. The first-run setup flow now uses the beach background, a translucent frosted-glass card, full-row setup token/site name fields, a shared STARTTLS/email-check control row, no empty feedback gap below that control, and a mobile-safe centering wrapper instead of the shared top-heavy page padding. Verification state is green at `204` backend tests passed and `143` frontend tests passed.
+Security findings around malformed JSON handling, clickjacking headers, and HSTS are addressed in the repo code paths exercised by local verification. Backend verification is green at `211` tests passed plus Ruff and mypy. Frontend verification is green at `143` unit/component tests passed, production build succeeded, and `23` browser tests passed. Browser E2E now runs deterministically without inheriting local AI provider keys.
 
 ## Next step
-Next meaningful step is to extend the same schema-unavailable handling to other startup-safe or pre-setup paths so an empty or drifted database never leaks raw SQL errors outside `/health`.
+Add an explicit application-level switch for disabling background UI-label translation in automated environments so test determinism does not depend on empty provider-key env overrides alone.
 
 ## Important files
-- AGENTS.md
-- HANDOFF.md
-- README.md
-- DEPLOYMENT.md
-- backend/.env.example
 - backend/main.py
-- backend/api/health.py
-- backend/services/startup_migrations.py
-- backend/tests/api/test_health.py
-- backend/tests/api/test_health_runtime_smoke.py
-- backend/tests/services/test_startup_migrations.py
-- backend/tests/test_main_entrypoint.py
-- frontend/src/components/setupWizard/SetupWizardForm.tsx
-- frontend/src/components/setupWizard/SetupWizardShell.tsx
-- frontend/src/components/SetupWizard.tsx
-- frontend/src/components/SetupWizard.test.tsx
+- backend/tests/api/test_request_validation.py
+- backend/tests/api/test_security_headers.py
+- frontend/vite.config.ts
+- frontend/tests/conftest.py
+- frontend/tests/test_security_headers_e2e.py
+- frontend/tests/test_auth_and_admin_e2e.py
+- frontend/tests/test_setup_initialization_e2e.py
+- README.md
+- frontend/README.md
+- DEPLOYMENT.md
 
 ## Notes for next session
-The new startup-migration logic is intentionally scoped to the direct `python main.py` path. Do not move it into `api.lifespan` or generic app import code unless product requirements change. The real-process smoke tests use `uvicorn main:app` specifically to verify that import-based runtime paths still skip auto-migration while `/health` degrades cleanly. If future work touches startup or health behavior, keep the SQLite absolute-path normalization intact so relative `SQLITE_DB_PATH` values behave the same when `main.py` is launched from outside `backend/`.
-For the current local dev environment, the frontend is configured for the LAN origin `http://192.168.1.160:5173`, so backend CORS must include that exact origin alongside `http://localhost:5173`.
-Frontend screenshot review for the latest setup-shell pass used temporary local captures only and did not leave preview scaffolding in the repo. The latest gap-fix before/after images are `/tmp/setup-gap-before-check-row.png` and `/tmp/setup-gap-after-check-row.png`. The broader mobile centering before/after images from the prior pass are `/tmp/setup-preview-before-mobile.png` and `/tmp/setup-preview-after-mobile.png`.
+The frontend browser-suite instability was caused by live provider-backed background translation leaking in from local `.env` state. `frontend/tests/conftest.py` now pins `OPENAI_API_KEY` and `DEEPSEEK_API_KEY` to empty strings before importing backend application code so `load_dotenv()` cannot repopulate them from disk. If future work touches browser-test harness startup, keep that ordering intact.
+The backend HSTS behavior is intentionally conditional: it emits only when the request is HTTPS or when the proxy forwards `X-Forwarded-Proto=https`. Keep the API proxy forwarding header if deployment behavior is adjusted later.
 
 ## Last updated
-2026-03-25 05:52 UTC
+2026-03-27 05:32 UTC

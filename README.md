@@ -294,7 +294,9 @@ For full auth behavior and security flow details, see [AUTHENTICATION_FLOW.md](A
 - Review [SECURITY.md](SECURITY.md) for policy and reporting guidance.
 - Never commit secrets (`.env`, API keys, SMTP passwords).
 - In production, set `COOKIE_SECURE=true` and use HTTPS.
-- Backend responses now include a CSP, including the backend-served email-verification feedback page.
+- Malformed JSON request bodies now return `400 Bad Request`; schema validation errors still return `422`.
+- Backend responses include CSP and clickjacking headers, and emit HSTS when the request reaches the app as HTTPS.
+- The Vite dev/preview host also emits CSP, clickjacking, and HSTS headers for SPA routes so local/browser verification sees the same baseline protections.
 - This repository does not serve the Vite frontend from FastAPI in production, so deploy the same CSP intent at the frontend host or reverse proxy as well.
 - Repository automation included:
   - CI: `.github/workflows/ci.yml`

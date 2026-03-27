@@ -42,6 +42,8 @@ os.environ.setdefault("INITIAL_SETUP_TOKEN", TEST_INITIAL_SETUP_TOKEN)
 os.environ.setdefault("CORS_ALLOW_ORIGINS", FRONTEND_BASE_URL)
 os.environ.setdefault("AUTH_FRONTEND_BASE_URL", FRONTEND_BASE_URL)
 os.environ.setdefault("AUTH_BACKEND_BASE_URL", FAST_API_BASE_URL)
+os.environ["OPENAI_API_KEY"] = ""
+os.environ["DEEPSEEK_API_KEY"] = ""
 
 from main import app
 from frontend.frontend_anchor import FrontendAnchor

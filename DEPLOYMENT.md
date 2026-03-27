@@ -213,7 +213,7 @@ The API reverse proxy should:
 - avoid overwriting the backend `Content-Security-Policy` header
 - avoid adding wildcard CORS headers in front of FastAPI
 
-The backend already emits its own security headers and enforces exact-origin CORS. The proxy should forward traffic cleanly rather than trying to replace that logic.
+The backend already emits its own security headers and exact-origin CORS behavior. Preserve `X-Forwarded-Proto=https` so backend HSTS is emitted only for HTTPS requests, and let the proxy forward that response cleanly rather than trying to replace the app logic.
 
 ## HTTPS and edge checklist
 
