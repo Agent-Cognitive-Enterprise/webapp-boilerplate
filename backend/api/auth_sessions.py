@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -48,6 +49,25 @@ def _incorrect_credentials_exception(request: Request) -> HTTPException:
         ),
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+
+def _clear_auth_cookies(response: Response) -> None:
+    clear_access_cookie(response)
+    clear_refresh_cookie(response)
+    clear_session_binding_cookie(response)
+
+
+def _cookie_clearing_error_response(
+    *,
+    status_code: int,
+    detail: str,
+) -> JSONResponse:
+    response = JSONResponse(
+        status_code=status_code,
+        content={"detail": detail},
+    )
+    _clear_auth_cookies(response)
+    return response
 
 
 async def login_for_access_token_handler(
@@ -121,7 +141,7 @@ async def rotate_refresh_token_handler(
     response: Response,
     check_rate_limit,
     create_access_token,
-) -> Token:
+) -> Token | Response:
     await check_rate_limit(
         session=session,
         action="refresh",
@@ -131,10 +151,7 @@ async def rotate_refresh_token_handler(
 
     plain_rt = request.cookies.get(COOKIE_REFRESH_NAME)
     if not plain_rt:
-        clear_access_cookie(response)
-        clear_refresh_cookie(response)
-        clear_session_binding_cookie(response)
-        raise HTTPException(
+        return _cookie_clearing_error_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=msg(
                 request=request,
@@ -146,10 +163,7 @@ async def rotate_refresh_token_handler(
     rt_hash = hash_token(plain_rt)
     rt = await get_by_token_hash(session, rt_hash)
     if not rt:
-        clear_access_cookie(response)
-        clear_refresh_cookie(response)
-        clear_session_binding_cookie(response)
-        raise HTTPException(
+        return _cookie_clearing_error_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=msg(
                 request=request,
@@ -160,10 +174,7 @@ async def rotate_refresh_token_handler(
     if rt.revoked:
         await revoke_token_and_descendants(session, rt)
         await session.commit()
-        clear_access_cookie(response)
-        clear_refresh_cookie(response)
-        clear_session_binding_cookie(response)
-        raise HTTPException(
+        return _cookie_clearing_error_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=msg(
                 request=request,
@@ -177,10 +188,7 @@ async def rotate_refresh_token_handler(
         if not session_binding_token or hash_token(session_binding_token) != rt.client_binding_hash:
             await revoke_token_and_descendants(session, rt)
             await session.commit()
-            clear_access_cookie(response)
-            clear_refresh_cookie(response)
-            clear_session_binding_cookie(response)
-            raise HTTPException(
+            return _cookie_clearing_error_response(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=msg(
                     request=request,
@@ -200,10 +208,7 @@ async def rotate_refresh_token_handler(
     if expires_at <= datetime.now(timezone.utc):
         await mark_used_and_revoke(session, rt)
         await session.commit()
-        clear_access_cookie(response)
-        clear_refresh_cookie(response)
-        clear_session_binding_cookie(response)
-        raise HTTPException(
+        return _cookie_clearing_error_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=msg(
                 request=request,
@@ -232,10 +237,7 @@ async def rotate_refresh_token_handler(
     await session.refresh(rt)
     db_user = await session.get(User, rt.user_id)
     if not db_user:
-        clear_access_cookie(response)
-        clear_refresh_cookie(response)
-        clear_session_binding_cookie(response)
-        raise HTTPException(
+        return _cookie_clearing_error_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=msg(
                 request=request,
@@ -246,10 +248,7 @@ async def rotate_refresh_token_handler(
     if not db_user.is_active:
         await revoke_token_and_descendants(session, rt)
         await session.commit()
-        clear_access_cookie(response)
-        clear_refresh_cookie(response)
-        clear_session_binding_cookie(response)
-        raise HTTPException(
+        return _cookie_clearing_error_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=msg(
                 request=request,
@@ -260,10 +259,7 @@ async def rotate_refresh_token_handler(
     if not db_user.email_verified:
         await revoke_token_and_descendants(session, rt)
         await session.commit()
-        clear_access_cookie(response)
-        clear_refresh_cookie(response)
-        clear_session_binding_cookie(response)
-        raise HTTPException(
+        return _cookie_clearing_error_response(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=msg(
                 request=request,

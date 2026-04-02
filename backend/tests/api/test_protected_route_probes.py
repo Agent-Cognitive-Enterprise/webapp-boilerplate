@@ -1,70 +1,40 @@
 from collections.abc import Callable
-from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.auth_handler import create_access_token
+from main import PROTECTED_ADMIN_PATHS, PROTECTED_USER_PATHS
+from tests.api.auth_session_test_helpers import (
+    TRUSTED_ORIGIN,
+    login_cookie_session,
+)
+from tests.api.protected_route_cases import (
+    ADMIN_PROTECTED_ROUTE_PROBE_CASES,
+    USER_AUTH_REQUIRED_GET_PATHS,
+    USER_METHOD_DISCLOSURE_PATHS,
+)
 from tests.helper import create_test_user
-
-
-TRUSTED_ORIGIN = "http://localhost:5173"
-
-
-def _empty_request_kwargs() -> dict[str, object]:
-    return {}
-
-
-def _admin_settings_post_kwargs() -> dict[str, object]:
-    return {"json": {}}
-
-
-def _user_detail_path() -> str:
-    return f"/users/{uuid4()}"
-
-
-def _static_path(path: str) -> Callable[[], str]:
-    return lambda: path
 
 
 ADMIN_PROBE_CASES = [
     pytest.param(
-        "get",
-        _static_path("/admin/settings"),
-        _empty_request_kwargs,
-        False,
-        id="admin-settings-get",
-    ),
-    pytest.param(
-        "post",
-        _static_path("/admin/settings"),
-        _admin_settings_post_kwargs,
-        True,
-        id="admin-settings-post",
-    ),
-    pytest.param(
-        "get",
-        _static_path("/admin/settings/email/check"),
-        _empty_request_kwargs,
-        False,
-        id="admin-settings-email-check-get",
-    ),
-    pytest.param(
-        "get",
-        _static_path("/users"),
-        _empty_request_kwargs,
-        False,
-        id="users-list-get",
-    ),
-    pytest.param(
-        "get",
-        _user_detail_path,
-        _empty_request_kwargs,
-        False,
-        id="users-detail-get",
-    ),
+        case.method,
+        case.path_factory,
+        case.request_kwargs_factory,
+        case.needs_csrf_origin,
+        id=case.case_id,
+    )
+    for case in ADMIN_PROTECTED_ROUTE_PROBE_CASES
 ]
+
+
+def test_shared_protected_route_cases_track_backend_guard_paths() -> None:
+    admin_guard_paths = {case.guard_path for case in ADMIN_PROTECTED_ROUTE_PROBE_CASES}
+
+    assert admin_guard_paths == {*PROTECTED_ADMIN_PATHS, "/users/{id}"}
+    assert {*USER_AUTH_REQUIRED_GET_PATHS, *USER_METHOD_DISCLOSURE_PATHS} == PROTECTED_USER_PATHS
 
 
 async def _login_cookie_session(
@@ -72,11 +42,7 @@ async def _login_cookie_session(
     email: str,
     password: str,
 ) -> None:
-    response = await client.post(
-        "/auth/token",
-        data={"username": email, "password": password},
-    )
-    assert response.status_code == 200
+    await login_cookie_session(client, email, password)
 
 
 async def _authenticate_regular_user(
@@ -121,7 +87,7 @@ async def test_user_probe_requires_auth_before_method_disclosure(
     client: AsyncClient,
     session: AsyncSession,
 ) -> None:
-    unauthenticated_response = await client.get("/user-settings")
+    unauthenticated_response = await client.get(USER_METHOD_DISCLOSURE_PATHS[0])
 
     assert unauthenticated_response.status_code == 401
     assert unauthenticated_response.json()["detail"] == "Not authenticated"
@@ -132,10 +98,37 @@ async def test_user_probe_requires_auth_before_method_disclosure(
         "bearer",
         email="user-probe-bearer@example.com",
     )
-    bearer_response = await client.get("/user-settings", headers=bearer_headers)
+    bearer_response = await client.get(
+        USER_METHOD_DISCLOSURE_PATHS[0],
+        headers=bearer_headers,
+    )
 
     assert bearer_response.status_code == 405
     assert bearer_response.json()["detail"] == "Method Not Allowed"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("path", USER_AUTH_REQUIRED_GET_PATHS)
+async def test_user_profile_routes_require_auth_before_response(
+    client: AsyncClient,
+    session: AsyncSession,
+    path: str,
+) -> None:
+    unauthenticated_response = await client.get(path)
+
+    assert unauthenticated_response.status_code == 401
+    assert unauthenticated_response.json()["detail"] == "Not authenticated"
+
+    bearer_headers = await _authenticate_regular_user(
+        client,
+        session,
+        "bearer",
+        email="users-me-probe@example.com",
+    )
+    authenticated_response = await client.get(path, headers=bearer_headers)
+
+    assert authenticated_response.status_code == 200
+    assert authenticated_response.json()["email"] == "users-me-probe@example.com"
 
 
 @pytest.mark.asyncio

@@ -1,11 +1,21 @@
-from collections.abc import Callable
 from pathlib import Path
-from uuid import uuid4
+import sqlite3
 
 import httpx
 
+from auth.refresh_utils import hash_token
 from settings import COOKIE_REFRESH_NAME, COOKIE_SESSION_BINDING_NAME
 from security.csrf import CSRF_ERROR_DETAIL
+from tests.api.auth_session_test_helpers import (
+    TRUSTED_ORIGIN,
+    UNTRUSTED_ORIGIN,
+    assert_auth_cookie_delete_headers,
+)
+from tests.api.protected_route_cases import (
+    ADMIN_GET_PROBE_PATH_FACTORIES,
+    ADMIN_USER_DETAIL_PATH_FACTORY,
+    USER_AUTH_REQUIRED_GET_PATHS,
+)
 from tests.api.runtime_smoke_helpers import (
     build_server_env,
     find_free_port,
@@ -21,13 +31,6 @@ REGULAR_USER_EMAIL = "runtime-user@example.com"
 REGULAR_USER_PASSWORD = "RuntimeUserPass123!"
 ADMIN_EMAIL = "runtime-admin@example.com"
 ADMIN_PASSWORD = "RuntimeAdminPass123!"
-TRUSTED_ORIGIN = "http://localhost:5173"
-UNTRUSTED_ORIGIN = "http://evil.example"
-ADMIN_PROBE_PATHS: tuple[Callable[[], str], ...] = (
-    lambda: "/admin/settings",
-    lambda: "/users",
-    lambda: f"/users/{uuid4()}",
-)
 
 
 def test_live_server_protected_routes_require_auth_and_admin(
@@ -48,8 +51,11 @@ def test_live_server_protected_routes_require_auth_and_admin(
         with (
             httpx.Client(base_url=base_url, timeout=2.0) as guest_client,
             httpx.Client(base_url=base_url, timeout=2.0) as user_client,
+            httpx.Client(base_url=base_url, timeout=2.0) as missing_refresh_client,
+            httpx.Client(base_url=base_url, timeout=2.0) as invalid_refresh_client,
             httpx.Client(base_url=base_url, timeout=2.0) as rotation_client,
             httpx.Client(base_url=base_url, timeout=2.0) as binding_client,
+            httpx.Client(base_url=base_url, timeout=2.0) as legacy_client,
             httpx.Client(base_url=base_url, timeout=2.0) as admin_client,
         ):
             _initialize_application(guest_client)
@@ -57,9 +63,10 @@ def test_live_server_protected_routes_require_auth_and_admin(
             _login(user_client, REGULAR_USER_EMAIL, REGULAR_USER_PASSWORD)
             _login(rotation_client, REGULAR_USER_EMAIL, REGULAR_USER_PASSWORD)
             _login(binding_client, REGULAR_USER_EMAIL, REGULAR_USER_PASSWORD)
+            _login(legacy_client, REGULAR_USER_EMAIL, REGULAR_USER_PASSWORD)
             admin_token = _login(admin_client, ADMIN_EMAIL, ADMIN_PASSWORD)
 
-            for path_factory in ADMIN_PROBE_PATHS:
+            for path_factory in ADMIN_GET_PROBE_PATH_FACTORIES:
                 guest_response = guest_client.get(path_factory())
                 assert guest_response.status_code == 401
                 assert guest_response.json()["detail"] == "Not authenticated"
@@ -67,6 +74,20 @@ def test_live_server_protected_routes_require_auth_and_admin(
                 user_response = user_client.get(path_factory())
                 assert user_response.status_code == 403
                 assert user_response.json()["detail"] == "Admin access required"
+
+            for path in USER_AUTH_REQUIRED_GET_PATHS:
+                guest_response = guest_client.get(path)
+                assert guest_response.status_code == 401
+                assert guest_response.json()["detail"] == "Not authenticated"
+
+                user_response = user_client.get(path)
+                assert user_response.status_code == 200
+                assert user_response.json()["email"] == REGULAR_USER_EMAIL
+
+            _assert_refresh_missing_and_invalid_token_failures(
+                missing_refresh_client=missing_refresh_client,
+                invalid_refresh_client=invalid_refresh_client,
+            )
 
             trusted_origin_response = user_client.post(
                 "/admin/settings",
@@ -126,6 +147,7 @@ def test_live_server_protected_routes_require_auth_and_admin(
 
             _assert_refresh_rotation_reuse_detection(rotation_client)
             _assert_refresh_requires_matching_session_binding_cookie(binding_client)
+            _assert_legacy_refresh_token_migration(legacy_client, sqlite_db)
 
             logout_untrusted_origin_response = user_client.post(
                 "/auth/logout",
@@ -149,7 +171,7 @@ def test_live_server_protected_routes_require_auth_and_admin(
             assert post_logout_user_settings_response.json()["detail"] == "Not authenticated"
 
             admin_response = admin_client.get(
-                f"/users/{uuid4()}",
+                ADMIN_USER_DETAIL_PATH_FACTORY(),
                 headers={"Authorization": f"Bearer {admin_token}"},
             )
             assert admin_response.status_code == 405
@@ -222,6 +244,7 @@ def _assert_refresh_rotation_reuse_detection(client: httpx.Client) -> None:
     )
     assert replay_response.status_code == 401
     assert replay_response.json()["detail"] == "Invalid refresh token"
+    assert_auth_cookie_delete_headers(replay_response)
 
     client.cookies.set(COOKIE_REFRESH_NAME, new_refresh_token)
     client.cookies.set(COOKIE_SESSION_BINDING_NAME, session_binding_token)
@@ -231,6 +254,7 @@ def _assert_refresh_rotation_reuse_detection(client: httpx.Client) -> None:
     )
     assert descendant_response.status_code == 401
     assert descendant_response.json()["detail"] == "Invalid refresh token"
+    assert_auth_cookie_delete_headers(descendant_response)
 
 
 def _assert_refresh_requires_matching_session_binding_cookie(client: httpx.Client) -> None:
@@ -245,3 +269,102 @@ def _assert_refresh_requires_matching_session_binding_cookie(client: httpx.Clien
     )
     assert refresh_response.status_code == 401
     assert refresh_response.json()["detail"] == "Invalid refresh token"
+    assert_auth_cookie_delete_headers(refresh_response)
+
+
+def _assert_legacy_refresh_token_migration(
+    client: httpx.Client,
+    sqlite_db: Path,
+) -> None:
+    old_refresh_token = client.cookies.get(COOKIE_REFRESH_NAME)
+    old_session_binding_token = client.cookies.get(COOKIE_SESSION_BINDING_NAME)
+
+    assert old_refresh_token is not None
+    assert old_session_binding_token is not None
+
+    _set_client_binding_hash(sqlite_db, old_refresh_token, None)
+
+    refresh_response = client.post(
+        "/auth/refresh",
+        headers={"Origin": TRUSTED_ORIGIN},
+    )
+    assert refresh_response.status_code == 200
+    assert refresh_response.json()["token_type"] == "bearer"
+
+    new_refresh_token = client.cookies.get(COOKIE_REFRESH_NAME)
+    new_session_binding_token = client.cookies.get(COOKIE_SESSION_BINDING_NAME)
+    assert new_refresh_token is not None
+    assert new_session_binding_token is not None
+    assert new_refresh_token != old_refresh_token
+    assert new_session_binding_token != old_session_binding_token
+    assert _get_client_binding_hash(sqlite_db, new_refresh_token) is not None
+
+    post_migration_user_settings_response = client.post(
+        "/user-settings",
+        json={"route": "/profile", "settings": {"locale": "nl"}},
+        headers={"Origin": TRUSTED_ORIGIN},
+    )
+    assert post_migration_user_settings_response.status_code == 200
+    assert post_migration_user_settings_response.json()["settings"] == {"locale": "nl"}
+
+
+def _assert_refresh_missing_and_invalid_token_failures(
+    *,
+    missing_refresh_client: httpx.Client,
+    invalid_refresh_client: httpx.Client,
+) -> None:
+    missing_refresh_response = missing_refresh_client.post(
+        "/auth/refresh",
+        headers={"Origin": TRUSTED_ORIGIN},
+    )
+    assert missing_refresh_response.status_code == 401
+    assert missing_refresh_response.json()["detail"] == "Missing refresh token"
+    assert_auth_cookie_delete_headers(missing_refresh_response)
+
+    invalid_refresh_client.cookies.set(COOKIE_REFRESH_NAME, "notavalidtokenatall")
+    invalid_refresh_client.cookies.set(
+        COOKIE_SESSION_BINDING_NAME,
+        "bogus-session-binding",
+    )
+
+    invalid_refresh_response = invalid_refresh_client.post(
+        "/auth/refresh",
+        headers={"Origin": TRUSTED_ORIGIN},
+    )
+    assert invalid_refresh_response.status_code == 401
+    assert invalid_refresh_response.json()["detail"] == "Invalid refresh token"
+    assert_auth_cookie_delete_headers(invalid_refresh_response)
+
+
+def _set_client_binding_hash(
+    sqlite_db: Path,
+    refresh_token: str,
+    client_binding_hash: str | None,
+) -> None:
+    with sqlite3.connect(sqlite_db) as connection:
+        cursor = connection.execute(
+            """
+            UPDATE refresh_tokens
+            SET client_binding_hash = ?
+            WHERE token_hash = ? AND deleted_at IS NULL
+            """,
+            (client_binding_hash, hash_token(refresh_token)),
+        )
+        connection.commit()
+
+    assert cursor.rowcount == 1
+
+
+def _get_client_binding_hash(sqlite_db: Path, refresh_token: str) -> str | None:
+    with sqlite3.connect(sqlite_db) as connection:
+        row = connection.execute(
+            """
+            SELECT client_binding_hash
+            FROM refresh_tokens
+            WHERE token_hash = ? AND deleted_at IS NULL
+            """,
+            (hash_token(refresh_token),),
+        ).fetchone()
+
+    assert row is not None
+    return row[0]

@@ -16,6 +16,10 @@ async def create_test_user(
     email: str = None,
     password: str = "testpassword123",
     hashed_password: str = None,
+    *,
+    is_active: bool = True,
+    is_superuser: bool = False,
+    email_verified: bool = True,
 ) -> User:
     """Create a test user with optional custom fields."""
     if not full_name:
@@ -32,6 +36,9 @@ async def create_test_user(
         full_name=full_name,
         email=email,
         hashed_password=hashed_password,
+        is_active=is_active,
+        is_superuser=is_superuser,
+        email_verified=email_verified,
     )
 
     return user

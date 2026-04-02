@@ -68,6 +68,38 @@ def test_login_profile_logout_journey(visual_page):
     snap("protected_route_after_logout")
 
 
+def test_session_expiry_redirects_to_login_after_cookie_loss(visual_page):
+    reset_uninitialized_state()
+    seed_initialized_state(
+        site_name="E2E Session Expiry Site",
+        users=[
+            SeedUser(
+                full_name="Expiring Session User",
+                email="expiring-session@example.com",
+                password="SessionPass123!",
+            )
+        ],
+    )
+
+    page, snap = visual_page
+
+    _login(page, "expiring-session@example.com", "SessionPass123!")
+
+    expect(page).to_have_url(re.compile(".*/dashboard$"))
+    page.goto(f"{FRONTEND_BASE_URL}/profile")
+    expect(page).to_have_url(re.compile(".*/profile$"))
+    expect(page.get_by_text("expiring-session@example.com")).to_be_visible()
+    snap("profile_before_cookie_loss")
+
+    page.context.clear_cookies()
+    page.reload()
+
+    expect(page).to_have_url(re.compile(".*/login$"))
+    expect(page.get_by_role("button", name="Login")).to_be_visible()
+    expect(page.get_by_test_id("logout-button")).to_have_count(0)
+    snap("login_after_cookie_auth_expiry")
+
+
 def test_admin_supported_locale_change_is_visible_on_login_page(visual_page):
     reset_uninitialized_state()
     seed_initialized_state(
