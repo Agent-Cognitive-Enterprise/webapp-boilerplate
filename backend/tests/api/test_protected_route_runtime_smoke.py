@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import httpx
 
+from settings import COOKIE_REFRESH_NAME, COOKIE_SESSION_BINDING_NAME
 from security.csrf import CSRF_ERROR_DETAIL
 from tests.api.runtime_smoke_helpers import (
     build_server_env,
@@ -47,11 +48,13 @@ def test_live_server_protected_routes_require_auth_and_admin(
         with (
             httpx.Client(base_url=base_url, timeout=2.0) as guest_client,
             httpx.Client(base_url=base_url, timeout=2.0) as user_client,
+            httpx.Client(base_url=base_url, timeout=2.0) as rotation_client,
             httpx.Client(base_url=base_url, timeout=2.0) as admin_client,
         ):
             _initialize_application(guest_client)
             _register_regular_user(guest_client)
             _login(user_client, REGULAR_USER_EMAIL, REGULAR_USER_PASSWORD)
+            _login(rotation_client, REGULAR_USER_EMAIL, REGULAR_USER_PASSWORD)
             admin_token = _login(admin_client, ADMIN_EMAIL, ADMIN_PASSWORD)
 
             for path_factory in ADMIN_PROBE_PATHS:
@@ -118,6 +121,8 @@ def test_live_server_protected_routes_require_auth_and_admin(
             )
             assert post_refresh_user_settings_response.status_code == 200
             assert post_refresh_user_settings_response.json()["settings"] == {"locale": "it"}
+
+            _assert_refresh_rotation_reuse_detection(rotation_client)
 
             logout_untrusted_origin_response = user_client.post(
                 "/auth/logout",
@@ -187,3 +192,39 @@ def _login(client: httpx.Client, email: str, password: str) -> str:
     )
     assert response.status_code == 200, response.text
     return response.json()["access_token"]
+
+
+def _assert_refresh_rotation_reuse_detection(client: httpx.Client) -> None:
+    old_refresh_token = client.cookies.get(COOKIE_REFRESH_NAME)
+    session_binding_token = client.cookies.get(COOKIE_SESSION_BINDING_NAME)
+
+    assert old_refresh_token is not None
+    assert session_binding_token is not None
+
+    refresh_response = client.post(
+        "/auth/refresh",
+        headers={"Origin": TRUSTED_ORIGIN},
+    )
+    assert refresh_response.status_code == 200
+
+    new_refresh_token = client.cookies.get(COOKIE_REFRESH_NAME)
+    assert new_refresh_token is not None
+    assert new_refresh_token != old_refresh_token
+
+    client.cookies.set(COOKIE_REFRESH_NAME, old_refresh_token)
+    client.cookies.set(COOKIE_SESSION_BINDING_NAME, session_binding_token)
+    replay_response = client.post(
+        "/auth/refresh",
+        headers={"Origin": TRUSTED_ORIGIN},
+    )
+    assert replay_response.status_code == 401
+    assert replay_response.json()["detail"] == "Invalid refresh token"
+
+    client.cookies.set(COOKIE_REFRESH_NAME, new_refresh_token)
+    client.cookies.set(COOKIE_SESSION_BINDING_NAME, session_binding_token)
+    descendant_response = client.post(
+        "/auth/refresh",
+        headers={"Origin": TRUSTED_ORIGIN},
+    )
+    assert descendant_response.status_code == 401
+    assert descendant_response.json()["detail"] == "Invalid refresh token"
