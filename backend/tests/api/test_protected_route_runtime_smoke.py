@@ -96,6 +96,27 @@ def test_live_server_protected_routes_require_auth_and_admin(
             assert user_settings_untrusted_origin_response.status_code == 403
             assert user_settings_untrusted_origin_response.json()["detail"] == CSRF_ERROR_DETAIL
 
+            logout_untrusted_origin_response = user_client.post(
+                "/auth/logout",
+                headers={"Origin": UNTRUSTED_ORIGIN},
+            )
+            assert logout_untrusted_origin_response.status_code == 403
+            assert logout_untrusted_origin_response.json()["detail"] == CSRF_ERROR_DETAIL
+
+            logout_trusted_origin_response = user_client.post(
+                "/auth/logout",
+                headers={"Origin": TRUSTED_ORIGIN},
+            )
+            assert logout_trusted_origin_response.status_code == 204
+
+            post_logout_user_settings_response = user_client.post(
+                "/user-settings",
+                json={"route": "/profile", "settings": {"locale": "en"}},
+                headers={"Origin": TRUSTED_ORIGIN},
+            )
+            assert post_logout_user_settings_response.status_code == 401
+            assert post_logout_user_settings_response.json()["detail"] == "Not authenticated"
+
             admin_response = admin_client.get(
                 f"/users/{uuid4()}",
                 headers={"Authorization": f"Bearer {admin_token}"},
