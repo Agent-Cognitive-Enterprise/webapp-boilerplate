@@ -11,16 +11,17 @@ Keep protected-route hardening and cookie-auth session behavior regression-teste
 - Extended the live-server smoke to send a cookie-authenticated `POST /auth/logout`, verifying an untrusted `Origin` is rejected by CSRF, a trusted `Origin` succeeds with `204`, and a follow-up cookie-authenticated write becomes `401 Not authenticated` after logout clears the session cookies.
 - Extended the live-server smoke to send a cookie-authenticated `POST /auth/refresh`, verifying an untrusted `Origin` is rejected by CSRF, a trusted `Origin` succeeds with `200`, and the refreshed cookie-backed session can still perform a trusted `/user-settings` write afterward.
 - Extended the live-server smoke to preserve old and rotated refresh cookies explicitly, verifying runtime refresh-token rotation and reuse invalidation: replaying the old token returns `401 Invalid refresh token`, and the descendant rotated token is also revoked afterward.
+- Extended the live-server smoke to use a tampered session-binding cookie on `/auth/refresh`, verifying the mismatched binding is rejected with `401 Invalid refresh token` on real HTTP requests.
 - Extracted shared live-server helpers into `backend/tests/api/runtime_smoke_helpers.py` and updated `backend/tests/api/test_health_runtime_smoke.py` to reuse them.
 - Updated `backend/tests/README.md` to document the protected-route probe coverage and live-server runtime smoke coverage.
-- Ran focused runtime smoke coverage successfully (`1` targeted test passed after the rotation/reuse extension).
+- Ran focused runtime smoke coverage successfully (`1` targeted test passed after the session-binding mismatch extension).
 - Re-ran full backend verification successfully (`240` tests passed, Ruff clean, mypy clean).
 
 ## Current status
-Protected backend routes now have both an in-process regression matrix and a live-server smoke test. Runtime coverage verifies an admin-denied write path, a supported `/user-settings` write path, cookie-authenticated `/auth/refresh` and `/auth/logout`, plus refresh-token rotation/reuse invalidation over real HTTP.
+Protected backend routes now have both an in-process regression matrix and a live-server smoke test. Runtime coverage verifies an admin-denied write path, a supported `/user-settings` write path, cookie-authenticated `/auth/refresh` and `/auth/logout`, refresh-token rotation/reuse invalidation, and session-binding mismatch rejection over real HTTP.
 
 ## Next step
-Add a live-server smoke test for tampered session-binding cookies on `/auth/refresh`, so runtime coverage verifies that a mismatched binding is rejected outside the in-process test client path.
+Fix refresh failure paths so cookie-clearing headers survive `HTTPException` responses, then add runtime assertions for those delete-cookie headers on invalid refresh/session-binding failure cases.
 
 ## Important files
 - backend/tests/api/test_protected_route_probes.py
@@ -34,7 +35,7 @@ Add a live-server smoke test for tampered session-binding cookies on `/auth/refr
 
 ## Notes for next session
 If more protected API surfaces are added later, update `_resolve_protected_access_level()` in `backend/main.py` and extend both `backend/tests/api/test_protected_route_probes.py` and `backend/tests/api/test_protected_route_runtime_smoke.py`.
-The runtime smoke now includes unsafe cookie-authenticated checks for `/admin/settings`, `/user-settings`, `/auth/refresh`, and `/auth/logout`, plus refresh-token rotation/reuse invalidation. Any further refresh-session runtime coverage should preserve or tamper with cookies explicitly rather than relying on the client cookie jar state after 401 responses.
+The runtime smoke now includes unsafe cookie-authenticated checks for `/admin/settings`, `/user-settings`, `/auth/refresh`, and `/auth/logout`, plus refresh-token rotation/reuse invalidation and session-binding mismatch rejection. Ad hoc runtime inspection showed the tampered-binding refresh failure returns `401 Invalid refresh token` but does not emit delete-cookie headers, even though the handler clears cookies before raising; the likely cause is that `HTTPException` response creation drops those response mutations.
 
 ## Last updated
-2026-04-02 22:25 UTC
+2026-04-02 22:36 UTC

@@ -49,12 +49,14 @@ def test_live_server_protected_routes_require_auth_and_admin(
             httpx.Client(base_url=base_url, timeout=2.0) as guest_client,
             httpx.Client(base_url=base_url, timeout=2.0) as user_client,
             httpx.Client(base_url=base_url, timeout=2.0) as rotation_client,
+            httpx.Client(base_url=base_url, timeout=2.0) as binding_client,
             httpx.Client(base_url=base_url, timeout=2.0) as admin_client,
         ):
             _initialize_application(guest_client)
             _register_regular_user(guest_client)
             _login(user_client, REGULAR_USER_EMAIL, REGULAR_USER_PASSWORD)
             _login(rotation_client, REGULAR_USER_EMAIL, REGULAR_USER_PASSWORD)
+            _login(binding_client, REGULAR_USER_EMAIL, REGULAR_USER_PASSWORD)
             admin_token = _login(admin_client, ADMIN_EMAIL, ADMIN_PASSWORD)
 
             for path_factory in ADMIN_PROBE_PATHS:
@@ -123,6 +125,7 @@ def test_live_server_protected_routes_require_auth_and_admin(
             assert post_refresh_user_settings_response.json()["settings"] == {"locale": "it"}
 
             _assert_refresh_rotation_reuse_detection(rotation_client)
+            _assert_refresh_requires_matching_session_binding_cookie(binding_client)
 
             logout_untrusted_origin_response = user_client.post(
                 "/auth/logout",
@@ -228,3 +231,17 @@ def _assert_refresh_rotation_reuse_detection(client: httpx.Client) -> None:
     )
     assert descendant_response.status_code == 401
     assert descendant_response.json()["detail"] == "Invalid refresh token"
+
+
+def _assert_refresh_requires_matching_session_binding_cookie(client: httpx.Client) -> None:
+    refresh_token = client.cookies.get(COOKIE_REFRESH_NAME)
+
+    assert refresh_token is not None
+
+    client.cookies.set(COOKIE_SESSION_BINDING_NAME, "tampered-session-binding")
+    refresh_response = client.post(
+        "/auth/refresh",
+        headers={"Origin": TRUSTED_ORIGIN},
+    )
+    assert refresh_response.status_code == 401
+    assert refresh_response.json()["detail"] == "Invalid refresh token"
