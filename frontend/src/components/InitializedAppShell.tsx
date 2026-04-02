@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import RequireAuth from "./RequireAuth.tsx";
+import RequireAdmin from "./RequireAdmin.tsx";
 import { useKeepUserLoggedIn } from "../hooks/useKeepUserLoggedIn.ts";
 import { useT } from "../hooks/useT.ts";
 import { SETUP_SUPPORTED_LOCALES } from "../i18n/setupLocaleMeta.ts";
@@ -67,8 +68,8 @@ export default function InitializedAppShell() {
                         <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
                         <Route path="/profile" element={<RequireAuth><UserProfile /></RequireAuth>} />
-                        <Route path="/users" element={<RequireAuth><UserManagement /></RequireAuth>} />
-                        <Route path="/admin/settings" element={<RequireAuth><AdminSettings /></RequireAuth>} />
+                        <Route path="/users" element={<RequireAdmin><UserManagement /></RequireAdmin>} />
+                        <Route path="/admin/settings" element={<RequireAdmin><AdminSettings /></RequireAdmin>} />
                     </Routes>
                 </Suspense>
             </main>

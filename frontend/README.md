@@ -290,7 +290,7 @@ Labels are:
 - Production frontend CSP / reverse-proxy requirements documented in `../DEPLOYMENT.md`
 - Automatic token refresh
 - Proper logout with backend notification
-- Protected routes with RequireAuth wrapper
+- Protected routes with `RequireAuth` and `RequireAdmin` wrappers
 - Role-based access control (admin vs regular user)
 - Input validation on all forms
 - Type-safe API calls with TypeScript

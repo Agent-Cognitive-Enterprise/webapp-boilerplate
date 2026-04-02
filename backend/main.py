@@ -2,10 +2,13 @@
 
 import uvicorn
 import logging
-from fastapi import FastAPI, Request
+from collections.abc import Awaitable, Callable
+from typing import TypeVar
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from utils.logger import setup_logging
 from api.lifespan import lifespan
@@ -16,6 +19,10 @@ from api.user_settings import router as user_settings_router
 from api.ui_label import router as ui_label_router
 from api.setup import router as setup_router
 from api.admin_settings import router as admin_settings_router
+from auth.auth_handler import (
+    get_current_admin_user_from_request,
+    get_current_user_from_request,
+)
 from security.csp import resolve_csp_header
 from security.csrf import csrf_protect_cookie_auth
 from services.bootstrap import is_initialized
@@ -25,6 +32,16 @@ from utils.db import get_session
 
 logger = logging.getLogger(__name__)
 HSTS_HEADER_VALUE = "max-age=31536000; includeSubDomains"
+PROTECTED_USER_PATHS = {
+    "/user-settings",
+    "/users/me/",
+}
+PROTECTED_ADMIN_PATHS = {
+    "/admin/settings",
+    "/admin/settings/email/check",
+    "/users",
+}
+T = TypeVar("T")
 
 setup_logging()
 logging.basicConfig(level=logging.CRITICAL)
@@ -66,18 +83,71 @@ ALLOWED_DURING_SETUP = {
 
 
 async def _get_setup_guard_initialized_state() -> bool:
+    return await _run_with_session_dependency(
+        lambda session: is_initialized(session=session),
+    )
+
+
+async def _run_with_session_dependency(
+    operation: Callable[[AsyncSession], Awaitable[T]],
+) -> T:
     dependency = app.dependency_overrides.get(get_session, get_session)
     dependency_result = dependency()
 
     if hasattr(dependency_result, "__anext__"):
         session = await anext(dependency_result)
         try:
-            return await is_initialized(session=session)
+            return await operation(session)
         finally:
             await dependency_result.aclose()
 
     session = await dependency_result
-    return await is_initialized(session=session)
+    return await operation(session)
+
+
+def _resolve_protected_access_level(path: str) -> str | None:
+    if path in PROTECTED_USER_PATHS:
+        return "user"
+    if path in PROTECTED_ADMIN_PATHS:
+        return "admin"
+    if path.startswith("/users/") and path != "/users/me/":
+        return "admin"
+    return None
+
+
+def _http_exception_to_json_response(exc: HTTPException) -> JSONResponse:
+    response = JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+    if exc.headers:
+        response.headers.update(exc.headers)
+    return response
+
+
+async def _authorize_protected_route(request: Request) -> JSONResponse | None:
+    access_level = _resolve_protected_access_level(request.url.path)
+    if access_level is None:
+        return None
+
+    async def _authorize(session) -> None:
+        if access_level == "admin":
+            await get_current_admin_user_from_request(
+                request=request,
+                session=session,
+            )
+            return
+        await get_current_user_from_request(
+            request=request,
+            session=session,
+        )
+
+    try:
+        await _run_with_session_dependency(_authorize)
+    except HTTPException as exc:
+        return _http_exception_to_json_response(exc)
+
+    return None
 
 
 def _request_is_https(request: Request) -> bool:
@@ -110,6 +180,10 @@ async def setup_mode_guard(request: Request, call_next):
                 "detail": "Application initialization is required. Complete setup at /setup."
             },
         )
+
+    auth_guard_response = await _authorize_protected_route(request)
+    if auth_guard_response is not None:
+        return auth_guard_response
 
     return await call_next(request)
 

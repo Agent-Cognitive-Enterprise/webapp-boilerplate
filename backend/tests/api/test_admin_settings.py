@@ -31,6 +31,40 @@ async def test_admin_settings_requires_admin(client: AsyncClient, session: Async
 
 
 @pytest.mark.asyncio
+async def test_admin_settings_unsupported_method_requires_admin_before_method_disclosure(
+    client: AsyncClient,
+    session: AsyncSession,
+):
+    unauthenticated_response = await client.post("/admin/settings", json={})
+    assert unauthenticated_response.status_code == 401
+    assert unauthenticated_response.json()["detail"] == "Not authenticated"
+
+    user = await create_test_user(session=session, email="admin-settings-user@example.com")
+    user_token = create_access_token(data={"sub": user.email})
+    non_admin_response = await client.post(
+        "/admin/settings",
+        headers={"Authorization": f"Bearer {user_token}"},
+        json={},
+    )
+    assert non_admin_response.status_code == 403
+    assert non_admin_response.json()["detail"] == "Admin access required"
+
+    admin = await create_test_user(session=session, email="admin-settings-admin@example.com")
+    admin.is_superuser = True
+    session.add(admin)
+    await session.commit()
+    await session.refresh(admin)
+    admin_token = create_access_token(data={"sub": admin.email})
+    admin_response = await client.post(
+        "/admin/settings",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={},
+    )
+    assert admin_response.status_code == 405
+    assert admin_response.json()["detail"] == "Method Not Allowed"
+
+
+@pytest.mark.asyncio
 async def test_admin_settings_get_and_update(client: AsyncClient, session: AsyncSession):
     admin = await create_test_user(session=session, email="admin@example.com")
     admin.is_superuser = True

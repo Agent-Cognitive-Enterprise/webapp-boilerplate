@@ -297,6 +297,7 @@ For full auth behavior and security flow details, see [AUTHENTICATION_FLOW.md](A
 - In production, set `COOKIE_SECURE=true` and use HTTPS.
 - Malformed JSON request bodies now return `400 Bad Request`; schema validation errors still return `422`.
 - Backend responses include CSP and clickjacking headers, and emit HSTS when the request reaches the app as HTTPS.
+- Protected backend user/admin paths now challenge unauthenticated callers before unsupported methods can disclose route details with a bare `405`.
 - The Vite dev/preview host also emits CSP, clickjacking, and HSTS headers for SPA routes so local/browser verification sees the same baseline protections.
 - This repository does not serve the Vite frontend from FastAPI in production, so deploy the same CSP intent at the frontend host or reverse proxy as well.
 - Repository automation included:

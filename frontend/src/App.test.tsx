@@ -90,6 +90,11 @@ describe('App routing and navigation', () => {
     await waitFor(() => expect(screen.getByText('Login Page')).toBeInTheDocument());
   });
 
+  it('redirects unauthenticated access to admin route /admin/settings -> /login', async () => {
+    renderApp({ token: null, user: null }, '/admin/settings');
+    await waitFor(() => expect(screen.getByText('Login Page')).toBeInTheDocument());
+  });
+
   it('shows authenticated nav links and protected page for regular user', async () => {
     renderApp({ token: 'token-123', user: { is_admin: false } }, '/dashboard');
 
@@ -104,6 +109,18 @@ describe('App routing and navigation', () => {
     renderApp({ token: 'token-123', user: { is_admin: true } }, '/dashboard');
     await waitFor(() => expect(screen.getByRole('link', { name: 'nav.title.users' })).toBeInTheDocument());
     expect(screen.getByRole('link', { name: 'nav.title.admin_settings' })).toBeInTheDocument();
+  });
+
+  it('redirects non-admin access to /users -> /dashboard', async () => {
+    renderApp({ token: 'token-123', user: { is_admin: false } }, '/users');
+    await waitFor(() => expect(screen.getByText('Dashboard Page')).toBeInTheDocument());
+    expect(screen.queryByText('User Management Page')).not.toBeInTheDocument();
+  });
+
+  it('redirects non-admin access to /admin/settings -> /dashboard', async () => {
+    renderApp({ token: 'token-123', user: { is_admin: false } }, '/admin/settings');
+    await waitFor(() => expect(screen.getByText('Dashboard Page')).toBeInTheDocument());
+    expect(screen.queryByText('Admin Settings Page')).not.toBeInTheDocument();
   });
 
   it('calls logout from nav button', async () => {

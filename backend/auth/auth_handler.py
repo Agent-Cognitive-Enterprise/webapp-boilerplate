@@ -1,9 +1,9 @@
 # /auth/auth_handler.py
 
-from jose import jwt, JWTError
-from fastapi import Depends, APIRouter, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta, timezone
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 from pydantic import EmailStr, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,21 +64,29 @@ def get_credentials_exception():
     )
 
 
-async def get_current_user(
-    request: Request,
-    token: str | None = Depends(oauth2_scheme),
-    session: AsyncSession = Depends(get_session),
-):
-    resolved_token = token or request.cookies.get(COOKIE_ACCESS_NAME)
-    if not resolved_token:
-        raise HTTPException(
-            status_code=401,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+def get_not_authenticated_exception() -> HTTPException:
+    return HTTPException(
+        status_code=401,
+        detail="Not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
+
+def resolve_request_access_token(request: Request, token: str | None = None) -> str | None:
+    if token:
+        return token
+
+    authorization = request.headers.get("authorization", "")
+    scheme, _, credentials = authorization.partition(" ")
+    if scheme.lower() == "bearer" and credentials:
+        return credentials.strip()
+
+    return request.cookies.get(COOKIE_ACCESS_NAME)
+
+
+def decode_access_token_email(token: str) -> str:
     try:
-        payload = jwt.decode(resolved_token, AUTH_SECRET_KEY, algorithms=[AUTH_ALGORITHM])
+        payload = jwt.decode(token, AUTH_SECRET_KEY, algorithms=[AUTH_ALGORITHM])
         email = payload.get("sub")
         if not isinstance(email, str):
             raise get_credentials_exception()
@@ -86,7 +94,22 @@ async def get_current_user(
     except (JWTError, ValidationError):
         raise get_credentials_exception()
 
-    db_user = await get_user_by_email(session=session, email=token_data.email)
+    return token_data.email
+
+
+async def get_current_user_from_request(
+    request: Request,
+    session: AsyncSession,
+    token: str | None = None,
+) -> User:
+    resolved_token = resolve_request_access_token(request, token)
+    if not resolved_token:
+        raise get_not_authenticated_exception()
+
+    db_user = await get_user_by_email(
+        session=session,
+        email=decode_access_token_email(resolved_token),
+    )
 
     if db_user is None:
         raise get_credentials_exception()
@@ -94,11 +117,46 @@ async def get_current_user(
     return db_user
 
 
+async def get_current_user(
+    request: Request,
+    token: str | None = Depends(oauth2_scheme),
+    session: AsyncSession = Depends(get_session),
+):
+    return await get_current_user_from_request(
+        request=request,
+        token=token,
+        session=session,
+    )
+
+
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
     if not current_user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user",
+        )
+    return current_user
+
+
+async def get_current_admin_user_from_request(
+    request: Request,
+    session: AsyncSession,
+    token: str | None = None,
+) -> User:
+    current_user = await get_current_user_from_request(
+        request=request,
+        token=token,
+        session=session,
+    )
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Inactive user",
+        )
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
         )
     return current_user
 
