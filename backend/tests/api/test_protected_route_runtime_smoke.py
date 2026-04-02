@@ -96,6 +96,29 @@ def test_live_server_protected_routes_require_auth_and_admin(
             assert user_settings_untrusted_origin_response.status_code == 403
             assert user_settings_untrusted_origin_response.json()["detail"] == CSRF_ERROR_DETAIL
 
+            refresh_untrusted_origin_response = user_client.post(
+                "/auth/refresh",
+                headers={"Origin": UNTRUSTED_ORIGIN},
+            )
+            assert refresh_untrusted_origin_response.status_code == 403
+            assert refresh_untrusted_origin_response.json()["detail"] == CSRF_ERROR_DETAIL
+
+            refresh_trusted_origin_response = user_client.post(
+                "/auth/refresh",
+                headers={"Origin": TRUSTED_ORIGIN},
+            )
+            assert refresh_trusted_origin_response.status_code == 200
+            assert refresh_trusted_origin_response.json()["token_type"] == "bearer"
+            assert "access_token" in refresh_trusted_origin_response.json()
+
+            post_refresh_user_settings_response = user_client.post(
+                "/user-settings",
+                json={"route": "/profile", "settings": {"locale": "it"}},
+                headers={"Origin": TRUSTED_ORIGIN},
+            )
+            assert post_refresh_user_settings_response.status_code == 200
+            assert post_refresh_user_settings_response.json()["settings"] == {"locale": "it"}
+
             logout_untrusted_origin_response = user_client.post(
                 "/auth/logout",
                 headers={"Origin": UNTRUSTED_ORIGIN},
