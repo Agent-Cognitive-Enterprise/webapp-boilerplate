@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.ui_label_support import compute_ui_label_values_hash
 from models.ui_label import UiLabel
+from settings import UI_LABEL_BACKGROUND_TASKS_ENABLED
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,14 @@ async def schedule_translation_task(
     snake_key_to_english_value: SnakeKeyToEnglishValue,
     translate_english_to_locale: TranslateEnglishToLocale,
 ) -> None:
+    if not UI_LABEL_BACKGROUND_TASKS_ENABLED:
+        logger.info(
+            "Background UI-label tasks are disabled. Skipping translation for %s (%s).",
+            key,
+            target_locale,
+        )
+        return
+
     async def _worker() -> None:
         try:
             async with session_factory() as session:
@@ -136,6 +145,14 @@ async def schedule_suggestion_evaluation_task(
     update_label: UpdateLabel,
     update_values_hash: UpdateValuesHash,
 ) -> None:
+    if not UI_LABEL_BACKGROUND_TASKS_ENABLED:
+        logger.info(
+            "Background UI-label tasks are disabled. Skipping suggestion evaluation for %s (%s).",
+            ui_label.key,
+            ui_label.locale,
+        )
+        return
+
     async def _worker() -> None:
         session = None
         try:

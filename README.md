@@ -161,6 +161,7 @@ Core variables:
 - `AUTH_BACKEND_BASE_URL` (default: `http://localhost:8000`)
 - `COOKIE_SAME_SITE` / `COOKIE_SECURE`
 - `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` (optional third-party AI provider keys)
+- `UI_LABEL_BACKGROUND_TASKS_ENABLED` (default: `true`; set `false` in automated environments to disable background UI-label translation/suggestion jobs)
 
 See [backend/.env.example](backend/.env.example) for the full template.
 

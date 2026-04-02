@@ -133,6 +133,7 @@ PYTHONPATH=..:. .venv/bin/pytest ../frontend/tests -q
 The test suite starts a dedicated migrated backend database plus frontend dev server automatically.
 Run it serially; `frontend/tests/conftest.py` shares `backend/frontend_e2e.db`.
 The same browser suite now runs in GitHub Actions CI on pushes and pull requests to `main`.
+The browser harness sets `UI_LABEL_BACKGROUND_TASKS_ENABLED=false` so background UI-label jobs stay deterministic and offline during automated runs.
 
 #### Visual Review Artifacts (Screenshots + Checklist)
 
