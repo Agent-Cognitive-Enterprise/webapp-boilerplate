@@ -8,7 +8,7 @@ python-multipart>=0.0.12
 # Database
 sqlmodel>=0.0.22
 sqlalchemy>=2.0.35
-aiosqlite>=0.20.0
+aiosqlite>=0.22.1
 asyncpg>=0.30.0
 psycopg[binary]>=3.2.0
 alembic>=1.14.0
